@@ -3,7 +3,7 @@
 Supports any OpenAI-compatible API (OpenAI, Gemini, Groq, Together, Ollama, etc.)
 via environment variables:
 
-    HF_TOKEN         — API key
+    HF_TOKEN         — Hugging Face / API key
     API_BASE_URL     — Base URL (default: https://api.openai.com/v1)
     MODEL_NAME       — Model name (default: gpt-4o)
 
