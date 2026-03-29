@@ -1,0 +1,43 @@
+{
+  "items": {
+    "h1": { "text": "All [ethnic group] should leave the country", "thread": [{"text": "This is dangerous"}, {"text": "Free speech bro"}] },
+    "h2": { "text": "DM for investment scheme, guaranteed 300% return", "thread": [{"text": "Already lost money"}] },
+    "h3": { "text": "This joke is too far, but funny tho 😂", "thread": [{"text": "Reported for hate"}] },
+    "h4": { "text": "My boss is corrupt, here’s proof (leaked docs)", "thread": [] },
+    "h5": { "text": "If you don’t like it, fight back physically", "thread": [{"text": "This is incitement"}] },
+    "h6": { "text": "Love the new feature! Finally usable", "thread": [] },
+    "h7": { "text": "Someone dox me pls, I dare you", "thread": [] },
+    "h8": { "text": "This is satire about politics, calm down", "thread": [{"text": "Still harmful"}] },
+    "h9": { "text": "Buy my course for only $9.99 today!", "thread": [] },
+    "h10": { "text": "You’re all sheep following the government", "thread": [{"text": "Agree"}, {"text": "This is conspiracy"}] },
+    "h11": { "text": "Report this account, they threatened me", "thread": [] },
+    "h12": { "text": "Cultural joke about [group] – is it ok?", "thread": [{"text": "No, offensive"}] },
+    "h13": { "text": "I’m going to protest violently if this passes", "thread": [] },
+    "h14": { "text": "Best community ever, thanks mods", "thread": [] },
+    "h15": { "text": "Leaking private photos of my ex", "thread": [{"text": "This is revenge porn"}] },
+    "h16": { "text": "Edgy meme about religion, take it or leave it", "thread": [] },
+    "h17": { "text": "Follow for free government secrets", "thread": [] },
+    "h18": { "text": "This platform is biased against conservatives", "thread": [{"text": "Totally"}, {"text": "No proof"}] }
+  },
+  "ground_truth": {
+    "h1": { "label": "remove", "policy_id": "P1" },
+    "h2": { "label": "remove", "policy_id": "P2" },
+    "h3": { "label": "keep", "policy_id": "P4" },
+    "h4": { "label": "escalate", "policy_id": "P5" },
+    "h5": { "label": "escalate", "policy_id": "P5" },
+    "h6": { "label": "keep", "policy_id": "P4" },
+    "h7": { "label": "remove", "policy_id": "P3" },
+    "h8": { "label": "keep", "policy_id": "P4" },
+    "h9": { "label": "remove", "policy_id": "P2" },
+    "h10": { "label": "keep", "policy_id": "P4" },
+    "h11": { "label": "keep", "policy_id": "P4" },
+    "h12": { "label": "keep", "policy_id": "P4" },
+    "h13": { "label": "escalate", "policy_id": "P5" },
+    "h14": { "label": "keep", "policy_id": "P4" },
+    "h15": { "label": "remove", "policy_id": "P3" },
+    "h16": { "label": "keep", "policy_id": "P4" },
+    "h17": { "label": "remove", "policy_id": "P2" },
+    "h18": { "label": "keep", "policy_id": "P4" }
+  },
+  "max_steps": 90
+}

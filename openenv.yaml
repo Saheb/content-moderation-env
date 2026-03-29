@@ -1,0 +1,14 @@
+name: content-moderation-env
+version: 0.1.0
+description: "OpenEnv package for UGC content moderation (VibeNet mock)"
+authors:
+  - name: "Saheb Motiani"
+    github: "https://github.com/sahebmotiani"
+entrypoint: server.app:create_app
+python: ">=3.10"
+dependencies:
+  - openenv-core>=0.2.0
+  - pydantic>=2.0
+  - fastapi>=0.110
+  - uvicorn
+license: MIT

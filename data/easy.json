@@ -1,0 +1,32 @@
+{
+  "items": {
+    "p1": {
+      "text": "This product sucks! Worst purchase ever.",
+      "thread": []
+    },
+    "p2": {
+      "text": "Check out my new song! Link in bio #music",
+      "thread": []
+    },
+    "p3": {
+      "text": "I love this community ❤️",
+      "thread": []
+    },
+    "p4": {
+      "text": "Buy cheap followers here!! dm me",
+      "thread": []
+    },
+    "p5": {
+      "text": "You are all idiots for liking this",
+      "thread": []
+    }
+  },
+  "ground_truth": {
+    "p1": { "label": "keep", "policy_id": "P4" },
+    "p2": { "label": "keep", "policy_id": "P4" },
+    "p3": { "label": "keep", "policy_id": "P4" },
+    "p4": { "label": "remove", "policy_id": "P2" },
+    "p5": { "label": "keep", "policy_id": "P4" }
+  },
+  "max_steps": 20
+}

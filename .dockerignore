@@ -1,0 +1,34 @@
+# Python/Docker ignores
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.swp
+.DS_Store
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local env files
+.env
+.envrc
+
+# Git
+.git
+.gitignore
+
+# Packaging
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+
+# Misc
+*.sqlite3
+coverage/
+htmlcov/

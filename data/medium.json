@@ -1,0 +1,27 @@
+{
+  "items": {
+    "m1": { "text": "This app is literally trash, devs should be fired", "thread": [] },
+    "m2": { "text": "Anyone else getting these scam calls from +91 numbers?", "thread": [{"text": "Yes, they asked for my bank details"}] },
+    "m3": { "text": "Lol you guys are so sensitive 😂", "thread": [] },
+    "m4": { "text": "Follow me for free crypto tips!", "thread": [] },
+    "m5": { "text": "My ex is a psycho, here’s her address", "thread": [] },
+    "m6": { "text": "Great update, thanks team!", "thread": [] },
+    "m7": { "text": "This is the dumbest policy ever", "thread": [{"text": "Totally agree"}] },
+    "m8": { "text": "DM me for cheap verified accounts", "thread": [] },
+    "m9": { "text": "I hate all of you liberals", "thread": [] },
+    "m10": { "text": "Best app ever ❤️", "thread": [] }
+  },
+  "ground_truth": {
+    "m1": { "label": "keep", "policy_id": "P4" },
+    "m2": { "label": "keep", "policy_id": "P4" },
+    "m3": { "label": "keep", "policy_id": "P4" },
+    "m4": { "label": "remove", "policy_id": "P2" },
+    "m5": { "label": "remove", "policy_id": "P3" },
+    "m6": { "label": "keep", "policy_id": "P4" },
+    "m7": { "label": "keep", "policy_id": "P4" },
+    "m8": { "label": "remove", "policy_id": "P2" },
+    "m9": { "label": "remove", "policy_id": "P1" },
+    "m10": { "label": "keep", "policy_id": "P4" }
+  },
+  "max_steps": 45
+}
