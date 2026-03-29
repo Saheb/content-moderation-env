@@ -24,7 +24,7 @@ The environment models moderation for a fictional social platform ("VibeNet"). I
 - Deterministic graders with scores in [0.0, 1.0]
 - Dense reward shaping with partial progress signals and policy-violation penalties
 - Typed Pydantic models (see `models.py`)
-- Reproducible baseline script (`inference.py`)
+- Reproducible baseline script (`baseline.py`)
 - Server ready for local hosting or containerized deployment
 
 ## Baseline scores (Mistral-Nemo 12B, zero-shot via Ollama)
@@ -76,10 +76,10 @@ Start the server (development):
 
 ```bash
 # with `uv` wrapper
-uv run uvicorn server.app:create_app --factory --reload --port 8000
+uv run uvicorn server.app:app --reload --port 8000
 
 # or directly (when venv active)
-uvicorn server.app:create_app --factory --reload --port 8000
+uvicorn server.app:app --reload --port 8000
 ```
 
 Run the baseline inference script. It supports any OpenAI-compatible API via environment variables (complies with Hackathon Pre-Submission schema):
@@ -93,25 +93,25 @@ Run the baseline inference script. It supports any OpenAI-compatible API via env
 ```bash
 # OpenAI (default)
 export HF_TOKEN=sk-...
-uv run python inference.py
+uv run python baseline.py
 
 # Google Gemini
 export HF_TOKEN=AIza...
 export API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 export MODEL_NAME=gemini-2.0-flash
-uv run python inference.py
+uv run python baseline.py
 
 # Groq
 export HF_TOKEN=gsk_...
 export API_BASE_URL=https://api.groq.com/openai/v1
 export MODEL_NAME=llama-3.3-70b-versatile
-uv run python inference.py
+uv run python baseline.py
 
 # Local Ollama
 export API_BASE_URL=http://localhost:11434/v1
 export HF_TOKEN=ollama
 export MODEL_NAME=llama3
-uv run python inference.py
+uv run python baseline.py
 ```
 
 ## Deploying (Hugging Face Spaces)

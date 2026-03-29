@@ -31,12 +31,9 @@ def create_app():
     return app
 
 
-# Create app instance at module level for uvicorn to import
-app = create_app()
-
-
 def main():
     """Create and run the FastAPI app for local/dev execution."""
+    app = create_app()
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
 
 
