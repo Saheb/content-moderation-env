@@ -5,11 +5,18 @@ import uvicorn
 
 
 def create_app():
-    return create_fastapi_app(
+    app = create_fastapi_app(
         ContentModerationEnvironment,
         action_cls=ModerationAction,
         observation_cls=ModerationObservation,
     )
+    
+    # Required for Hugging Face Spaces Load Balancer Health Check
+    @app.get("/")
+    def root():
+        return {"status": "running"}
+        
+    return app
 
 
 def main():
