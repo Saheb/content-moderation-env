@@ -30,15 +30,17 @@ def create_app():
     return app
 
 
+# Create app at module level for direct uvicorn import
+app = create_app()
+
+
 def main():
     """Create and run the FastAPI app for local/dev execution.
 
     This function is installable as a console script (`server`) and
     is also guarded by an ``if __name__ == '__main__'`` block below.
     """
-    app = create_app()
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-    return app
 
 
 if __name__ == "__main__":
