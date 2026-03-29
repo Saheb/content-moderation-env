@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_app():
+    """Factory function for creating the FastAPI app instance."""
     logger.info("Creating FastAPI app...")
     # create_fastapi_app expects a factory (callable) that creates new env instances
     app = create_fastapi_app(
@@ -30,16 +31,12 @@ def create_app():
     return app
 
 
-# Create app at module level for direct uvicorn import
+# Create app instance at module level for uvicorn to import
 app = create_app()
 
 
 def main():
-    """Create and run the FastAPI app for local/dev execution.
-
-    This function is installable as a console script (`server`) and
-    is also guarded by an ``if __name__ == '__main__'`` block below.
-    """
+    """Create and run the FastAPI app for local/dev execution."""
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
 
 

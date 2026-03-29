@@ -15,6 +15,5 @@ RUN pip install --no-cache-dir -e .
 # Hugging Face explicitly requires the app to listen on port 7860
 EXPOSE 7860
 
-# Run Uvicorn listening on the 0.0.0.0 IP address with port 7860
-# Direct app reference (not factory) for better HF Spaces compatibility
+# Run Uvicorn directly on the app instance
 CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
