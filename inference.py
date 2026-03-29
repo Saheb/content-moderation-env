@@ -3,32 +3,32 @@
 Supports any OpenAI-compatible API (OpenAI, Gemini, Groq, Together, Ollama, etc.)
 via environment variables:
 
-    LLM_API_KEY      — API key (falls back to OPENAI_API_KEY)
-    LLM_BASE_URL     — Base URL (default: https://api.openai.com/v1)
-    LLM_MODEL        — Model name (default: gpt-4o)
+    HF_TOKEN         — API key
+    API_BASE_URL     — Base URL (default: https://api.openai.com/v1)
+    MODEL_NAME       — Model name (default: gpt-4o)
 
 Examples:
     # OpenAI (default)
-    export LLM_API_KEY=sk-...
-    python baseline.py
+    export HF_TOKEN=sk-...
+    python inference.py
 
     # Google Gemini
-    export LLM_API_KEY=AIza...
-    export LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
-    export LLM_MODEL=gemini-2.0-flash
-    python baseline.py
+    export HF_TOKEN=AIza...
+    export API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+    export MODEL_NAME=gemini-2.0-flash
+    python inference.py
 
     # Groq
-    export LLM_API_KEY=gsk_...
-    export LLM_BASE_URL=https://api.groq.com/openai/v1
-    export LLM_MODEL=llama-3.3-70b-versatile
-    python baseline.py
+    export HF_TOKEN=gsk_...
+    export API_BASE_URL=https://api.groq.com/openai/v1
+    export MODEL_NAME=llama-3.3-70b-versatile
+    python inference.py
 
     # Local Ollama
-    export LLM_BASE_URL=http://localhost:11434/v1
-    export LLM_API_KEY=ollama
-    export LLM_MODEL=llama3
-    python baseline.py
+    export API_BASE_URL=http://localhost:11434/v1
+    export HF_TOKEN=ollama
+    export MODEL_NAME=llama3
+    python inference.py
 """
 
 import os
@@ -41,12 +41,12 @@ from openai import OpenAI, RateLimitError
 from models import ModerationAction
 
 # --- LLM configuration (provider-agnostic) ---
-api_key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
-base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
-model = os.getenv("LLM_MODEL", "gpt-4o")
+api_key = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
+base_url = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+model = os.getenv("MODEL_NAME", "gpt-4o")
 
 if not api_key:
-    raise SystemExit("Set LLM_API_KEY (or OPENAI_API_KEY) environment variable")
+    raise SystemExit("Set HF_TOKEN environment variable")
 
 openai_client = OpenAI(api_key=api_key, base_url=base_url)
 print(f"Using model={model} via {base_url}")

@@ -24,7 +24,7 @@ The environment models moderation for a fictional social platform ("VibeNet"). I
 - Deterministic graders with scores in [0.0, 1.0]
 - Dense reward shaping with partial progress signals and policy-violation penalties
 - Typed Pydantic models (see `models.py`)
-- Reproducible baseline script (`baseline.py`)
+- Reproducible baseline script (`inference.py`)
 - Server ready for local hosting or containerized deployment
 
 ## Baseline scores (Mistral-Nemo 12B, zero-shot via Ollama)
@@ -82,36 +82,36 @@ uv run uvicorn server.app:create_app --factory --reload --port 8000
 uvicorn server.app:create_app --factory --reload --port 8000
 ```
 
-Run the baseline inference script. It supports any OpenAI-compatible API via environment variables:
+Run the baseline inference script. It supports any OpenAI-compatible API via environment variables (complies with Hackathon Pre-Submission schema):
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `LLM_API_KEY` | falls back to `OPENAI_API_KEY` | API key |
-| `LLM_BASE_URL` | `https://api.openai.com/v1` | Provider endpoint |
-| `LLM_MODEL` | `gpt-4o` | Model name |
+| `HF_TOKEN` | falls back to `OPENAI_API_KEY` | API key |
+| `API_BASE_URL` | `https://api.openai.com/v1` | Provider endpoint |
+| `MODEL_NAME` | `gpt-4o` | Model name |
 
 ```bash
 # OpenAI (default)
-export LLM_API_KEY=sk-...
-uv run python baseline.py
+export HF_TOKEN=sk-...
+uv run python inference.py
 
 # Google Gemini
-export LLM_API_KEY=AIza...
-export LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
-export LLM_MODEL=gemini-2.0-flash
-uv run python baseline.py
+export HF_TOKEN=AIza...
+export API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+export MODEL_NAME=gemini-2.0-flash
+uv run python inference.py
 
 # Groq
-export LLM_API_KEY=gsk_...
-export LLM_BASE_URL=https://api.groq.com/openai/v1
-export LLM_MODEL=llama-3.3-70b-versatile
-uv run python baseline.py
+export HF_TOKEN=gsk_...
+export API_BASE_URL=https://api.groq.com/openai/v1
+export MODEL_NAME=llama-3.3-70b-versatile
+uv run python inference.py
 
 # Local Ollama
-export LLM_BASE_URL=http://localhost:11434/v1
-export LLM_API_KEY=ollama
-export LLM_MODEL=llama3
-uv run python baseline.py
+export API_BASE_URL=http://localhost:11434/v1
+export HF_TOKEN=ollama
+export MODEL_NAME=llama3
+uv run python inference.py
 ```
 
 ## Deploying (Hugging Face Spaces)
