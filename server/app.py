@@ -39,3 +39,11 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Module-level app for runners that expect `server.app:app` (no --factory)
+app = create_app()
+
+# Readiness endpoint often checked by hosting platforms
+@app.get("/ready")
+def ready():
+    return {"status": "ready"}

@@ -20,4 +20,4 @@ exclude = ["data*"]
 py-modules = ["models"]
 
 [tool.openenv]
-entrypoint = "server.app:create_app"
+entrypoint = "server.app:app"
