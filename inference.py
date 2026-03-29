@@ -52,7 +52,7 @@ def main() -> None:
     print(f"Using model={model} via {base_url}")
 
     # --- Environment client ---
-    async_client = GenericEnvClient(base_url="https://saheb-content-moderation-env.hf.space")
+    async_client = GenericEnvClient(base_url="http://localhost:8000")
     client = async_client.sync()
 
     for task in ["easy", "medium", "hard"]:
