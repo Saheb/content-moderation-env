@@ -52,7 +52,7 @@ def main() -> None:
     print(f"Using model={model} via {base_url}")
 
     # --- Environment client ---
-    async_client = GenericEnvClient(base_url="http://localhost:8000")
+    async_client = GenericEnvClient(base_url="https://saheb-content-moderation-env.hf.space")
     client = async_client.sync()
 
     for task in ["easy", "medium", "hard"]:
@@ -141,6 +141,9 @@ To moderate a pending post from the queue, output an action with:
                 action = ModerationAction.model_validate(clean_data)
                 result = client.step(action)
                 total_reward += result.reward or 0.0
+                
+                # Preemptive throttle for free APIs like Groq (limits hitting the 30 RPM ceiling)
+                time.sleep(1.5)
 
             # Read grader score from the observation (surfaced as a top-level field)
             final_obs = result.observation
