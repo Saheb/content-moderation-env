@@ -27,10 +27,12 @@ The environment models moderation for a fictional social platform ("VibeNet"). I
 - Reproducible baseline script (`baseline.py`)
 - Server ready for local hosting or containerized deployment
 
-## Baseline scores (Mistral-Nemo 12B, zero-shot via Ollama)
-- easy: **0.40**
-- medium: **0.30**
-- hard: **0.09**
+## Baseline scores
+
+| Model | easy | medium | hard |
+|---|---|---|---|
+| Mistral-Nemo 12B (Ollama, zero-shot) | 0.40 | 0.30 | 0.09 |
+| gpt-oss-120b (Groq) | **0.80** | **1.00** | **0.41** |
 
 ---
 
@@ -86,14 +88,24 @@ Run the baseline inference script. It supports any OpenAI-compatible API via env
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `HF_TOKEN` | falls back to `OPENAI_API_KEY` | API key |
-| `API_BASE_URL` | `https://api.openai.com/v1` | Provider endpoint |
-| `MODEL_NAME` | `gpt-4o` | Model name |
+| `HF_TOKEN` | falls back to `OPENAI_API_KEY` | Hugging Face API key or OpenAI-compatible key |
+| `OPENAI_API_KEY` | *(empty)* | Optional OpenAI API key (used directly if set) |
+| `API_BASE_URL` | `https://api.openai.com/v1` | LLM provider endpoint |
+| `MODEL_NAME` | `gpt-4o` | Model name for generation |
+| `ENV_CLIENT_BASE_URL` | `http://localhost:8000` | Environment server endpoint (for deployed HF/OpenEnv instances) |
 
+### Quick test against deployed HF Space (no local server needed)
+```bash
+cp .env.example .env
+# Edit .env and set your HF_TOKEN
+uv run python inference.py
+```
+
+### Run with different providers
 ```bash
 # OpenAI (default)
 export HF_TOKEN=sk-...
-uv run python baseline.py
+uv run python inference.py
 
 # Google Gemini
 export HF_TOKEN=AIza...
