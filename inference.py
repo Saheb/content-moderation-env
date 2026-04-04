@@ -33,10 +33,24 @@ Examples:
 
 import os
 import re
+import sys
 import json
 import time
+from typing import List, Optional
 
 from openenv import GenericEnvClient
+
+def log_start(task: str, env: str, model: str) -> None:
+    print(f"[START] task={task} env={env} model={model}", flush=True)
+
+def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
+    error_val = error if error else "null"
+    done_val = str(done).lower()
+    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}", flush=True)
+
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
 from openai import OpenAI, RateLimitError
 from models import ModerationAction
 
@@ -57,20 +71,33 @@ def main() -> None:
         raise SystemExit("Set HF_TOKEN environment variable")
 
     openai_client = OpenAI(api_key=api_key, base_url=base_url)
-    print(f"Using model={model} via {base_url}")
+    print(f"Using model={model} via {base_url}", file=sys.stderr)
 
     # --- Environment client ---
     env_client_base = os.getenv("ENV_CLIENT_BASE_URL", "http://localhost:8000")
     async_client = GenericEnvClient(base_url=env_client_base)
     client = async_client.sync()
+    
+    global_start_time = time.time()
+    final_summary = {}
 
     for task in ["easy", "medium", "hard"]:
         client.connect()
         try:
             result = client.reset(task_name=task)
             total_reward = 0.0
+            rewards = []
+            history = []
+            step = 0
+            log_start(task=task, env="content-moderation-env", model=model)
             # result is a StepResult where `.observation` is a dict (Generic client)
-            while not result.done:
+            done = result.done if hasattr(result, "done") else False
+            while not done:
+                if time.time() - global_start_time > 3600:
+                    print(f"Global 60-minute timeout reached. Terminating {task} task early.", file=sys.stderr)
+                    break
+                    
+                step += 1
                 obs = result.observation
                 queue = obs.get("queue_summary")
                 # Weaker models get extremely confused by Pydantic JSON schemas because they start with "type": "object"
@@ -97,22 +124,73 @@ To moderate a pending post from the queue, output an action with:
   "decision": "keep", "warn", "remove", or "escalate"
   "rationale": the policy ID applied (e.g. "P4")"""
 
-                prompt = f"Observation:\n- Queue: {json.dumps(queue, indent=2)}\n\nDecide next moderation action.\nRespond ONLY with a JSON object matching this schema:\n{schema_str}"
+                last_result = obs.get("last_action_result", "")
+                
+                prompt = f"Observation:\n- Queue: {json.dumps(queue, indent=2)}"
+                if last_result:
+                    prompt += f"\n- Environment Feedback: {last_result}"
+                    if "Incorrect" in last_result or "Invalid" in last_result:
+                        prompt += "\n  ⚠️ CRITICAL: Your last action was WRONG. You MUST pick a DIFFERENT decision, a DIFFERENT rationale, or process a different post. Do NOT repeat your previous choice."
+                prompt += f"\n\nDecide next moderation action.\nRespond ONLY with a JSON object matching this schema:\n{schema_str}"
 
+                print(prompt, file=sys.stderr)
+                
+                msg_list = [{"role": "system", "content": system_prompt}]
+                for entry in history[-6:]:  # keeps conversation moving forward
+                    msg_list.append(entry)
+                msg_list.append({"role": "user", "content": prompt})
+                
                 resp = None
                 max_retry_delay = (
                     300  # 5 minutes — beyond this likely means daily quota exhausted
                 )
                 for attempt in range(6):
                     try:
-                        resp = openai_client.chat.completions.create(
-                            model=model,
-                            messages=[
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": prompt},
-                            ],
-                            response_format={"type": "json_object"},
-                        )
+                        import openai
+                        try:
+                            # Try strict json_schema first
+                            resp = openai_client.chat.completions.create(
+                                model=model,
+                                messages=msg_list,
+                                response_format={
+                                    "type": "json_schema",
+                                    "json_schema": {
+                                        "name": "moderation_action",
+                                        "strict": True,
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "type": {"type": "string", "enum": ["moderate"]},
+                                                "post_id": {"type": "string"},
+                                                "decision": {"type": "string", "enum": ["keep", "warn", "remove", "escalate"]},
+                                                "rationale": {"type": "string", "enum": ["P1", "P2", "P3", "P4", "P5"]}
+                                            },
+                                            "required": ["type", "post_id", "decision", "rationale"],
+                                            "additionalProperties": False
+                                        }
+                                    }
+                                },
+                            )
+                        except (openai.UnprocessableEntityError, openai.BadRequestError) as e:
+                            err_str = str(e).lower()
+                            if "response_format" in err_str or "json_object" in err_str or "json_schema" in err_str or "unknown variant" in err_str:
+                                try:
+                                    # Fallback 1: generic json_object
+                                    resp = openai_client.chat.completions.create(
+                                        model=model,
+                                        messages=msg_list,
+                                        response_format={"type": "json_object"},
+                                    )
+                                except (openai.UnprocessableEntityError, openai.BadRequestError):
+                                    # Fallback 2: plain text
+                                    resp = openai_client.chat.completions.create(
+                                        model=model,
+                                        messages=msg_list,
+                                    )
+                            else:
+                                raise e
+                                
+                        print(resp, file=sys.stderr)
                         break  # Success
                     except RateLimitError as e:
                         if attempt == 5:
@@ -133,11 +211,15 @@ To moderate a pending post from the queue, output an action with:
                                 f"Rate limit retry delay ({sleep_time:.0f}s) exceeds {max_retry_delay}s threshold. "
                                 f"Likely daily quota exhausted — try again later or switch providers."
                             )
-                        print(f"Rate limited (429). Retrying in {sleep_time:.1f}s...")
+                        print(f"Rate limited (429). Retrying in {sleep_time:.1f}s...", file=sys.stderr)
                         time.sleep(sleep_time)
 
+                print(resp, file=sys.stderr)
                 assert resp is not None
-                raw = resp.choices[0].message.content.strip()
+                msg = resp.choices[0].message
+                content_str = msg.content or ""
+                reasoning_str = getattr(msg, "reasoning_content", "") or ""
+                raw = (content_str + "\n" + reasoning_str).strip()
                 # Extract JSON block to ignore conversational text from chatty models
                 start = raw.find("{")
                 end = raw.rfind("}")
@@ -170,16 +252,39 @@ To moderate a pending post from the queue, output an action with:
                     clean_data["type"] = "moderate"
 
                 if not clean_data:
-                    print(f"Warning: Model output invalid JSON structure: {raw}")
+                    print(f"Warning: Model output invalid JSON structure: {raw}", file=sys.stderr)
                     # Fallback to prevent crash, agent will receive negative reward
                     clean_data = {"type": "view_post", "post_id": "unknown"}
 
                 action = ModerationAction.model_validate(clean_data)
-                result = client.step(action)
-                total_reward += result.reward or 0.0
+                try:
+                    new_result = client.step(action)
+                    error_msg = None
+                except Exception as e:
+                    error_msg = str(e)
+                    new_result = None
+                    
+                if new_result:
+                    result = new_result
+                    reward = result.reward or 0.0
+                    done = result.done
+                else:
+                    reward = 0.0
+                    done = True
+                    
+                total_reward += reward
+                rewards.append(reward)
+                
+                action_str = json.dumps(clean_data).replace('"', "'")
+                log_step(step=step, action=action_str, reward=reward, done=done, error=error_msg)
+                
+                history.append({"role": "user", "content": prompt})
+                history.append({"role": "assistant", "content": json.dumps(clean_data)})
 
-                # Preemptive throttle for free APIs like Groq (limits hitting the 30 RPM ceiling)
-                time.sleep(1.5)
+                # Preemptive throttle for free APIs like Groq (stays under 12K TPM / 30 RPM limits)
+                # Bypass artificial delay for local endpoints to maximize inference speed
+                if not any(lh in base_url for lh in ("localhost", "127.0.0.1", "0.0.0.0")):
+                    time.sleep(5)
 
             # Read grader score from the observation (surfaced as a top-level field)
             final_obs = result.observation
@@ -188,10 +293,25 @@ To moderate a pending post from the queue, output an action with:
                 score = final_obs.get("grader_score") or 0.0
 
             print(
-                f"Task {task}: grader_score = {score:.2f} | total_reward = {total_reward:.2f}"
+                f"Task {task}: grader_score = {score:.2f} | total_reward = {total_reward:.2f}", file=sys.stderr
             )
+            success = score >= 0.8
+            final_summary[task] = {"score": score, "reward": total_reward, "success": success}
+            log_end(success=success, steps=step, score=score, rewards=rewards)
         finally:
             client.close()
+            
+    total_time = time.time() - global_start_time
+    mins, secs = divmod(total_time, 60)
+    
+    print("\n" + "="*45, file=sys.stderr)
+    print("FINAL RUN SUMMARY", file=sys.stderr)
+    print("="*45, file=sys.stderr)
+    for t, m in final_summary.items():
+        print(f"Task: {t: <8} | Score: {m['score']:.2f} | Reward: {m['reward']:>6.2f} | Success: {m['success']}", file=sys.stderr)
+    print("-" * 45, file=sys.stderr)
+    print(f"Total Time Taken: {int(mins)}m {int(secs)}s", file=sys.stderr)
+    print("="*45 + "\n", file=sys.stderr)
 
 
 if __name__ == "__main__":

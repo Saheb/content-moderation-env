@@ -1,6 +1,7 @@
 import uuid
 import json
 import os
+import time
 from typing import Dict, Any, Optional
 
 from openenv.core.env_server import Environment
@@ -32,6 +33,7 @@ class ContentModerationEnvironment(Environment):
         self.moderated.clear()
         self.decisions.clear()
         self.step_count = 0
+        self.action_history_counts: Dict[str, int] = {}
 
         # Load deterministic task pack
         data_path = os.path.join(os.path.dirname(__file__), "..", "data", f"{task_name}.json")
@@ -48,6 +50,11 @@ class ContentModerationEnvironment(Environment):
         self.step_count += 1
         reward: float = 0.0
         result: str = ""
+        
+        # Track loop count by post_id
+        if action.type == "moderate" and action.post_id and action.decision:
+            action_key = f"{action.post_id}_{action.decision}_{action.rationale}"
+            self.action_history_counts[action_key] = getattr(self, "action_history_counts", {}).get(action_key, 0) + 1
 
         if action.type == "view_post":
             reward += 0.08
@@ -103,8 +110,20 @@ class ContentModerationEnvironment(Environment):
             reward -= 0.10
             result = "Unknown action type"
 
+        # Apply loop penalty based on task difficulty level
+        limit = {"easy": 3, "medium": 4, "hard": 5}.get(self.task_name, 3)
+        loop_exceeded = False
+        
+        if action.type == "moderate" and action.post_id and action.decision:
+            action_key = f"{action.post_id}_{action.decision}_{action.rationale}"
+            count = getattr(self, "action_history_counts", {}).get(action_key, 0)
+            if count >= limit:
+                reward -= 5.0
+                result = f"Infinite loop detected: Model repeated the exact same decision for post {action.post_id} {count} times. Heavy penalty applied."
+                loop_exceeded = True
+
         # Episode termination
-        done = len(self.moderated) == len(self.task_data["items"]) or self.step_count >= self.task_data["max_steps"]
+        done = len(self.moderated) == len(self.task_data["items"]) or self.step_count >= self.task_data["max_steps"] or loop_exceeded
 
         grader = self._compute_grader_score() if done else None
 
