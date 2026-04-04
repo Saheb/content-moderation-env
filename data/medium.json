@@ -1,27 +1,57 @@
 {
   "items": {
-    "m1": { "text": "This app is literally trash, devs should be fired", "thread": [] },
-    "m2": { "text": "Anyone else getting these scam calls from +91 numbers?", "thread": [{"text": "Yes, they asked for my bank details"}] },
-    "m3": { "text": "Lol you guys are so sensitive 😂", "thread": [] },
-    "m4": { "text": "Follow me for free crypto tips!", "thread": [] },
-    "m5": { "text": "My ex is a psycho, here’s her address", "thread": [] },
-    "m6": { "text": "Great update, thanks team!", "thread": [] },
-    "m7": { "text": "This is the dumbest policy ever", "thread": [{"text": "Totally agree"}] },
-    "m8": { "text": "DM me for cheap verified accounts", "thread": [] },
-    "m9": { "text": "I hate all of you liberals", "thread": [] },
-    "m10": { "text": "Best app ever ❤️", "thread": [] }
+    "m1": {
+      "text": "This app is literally trash, devs should be fired",
+      "thread": []
+    },
+    "m2": {
+      "text": "Some people just can't handle facts... but that's what you get when you let the 🐸 crowd run things",
+      "thread": []
+    },
+    "m3": {
+      "text": "Anyone know how to report a scam account? They took money from my friend and disappeared",
+      "thread": [{ "text": "File a report through the help center" }]
+    },
+    "m4": {
+      "text": "Connect with us to multiply your savings! Guaranteed returns, regulators can't stop this. DM open.",
+      "thread": []
+    },
+    "m5": {
+      "text": "My ex keeps harassing me everywhere — here's their number so people can help me block them on all platforms",
+      "thread": []
+    },
+    "m6": {
+      "text": "As an investigative journalist covering extremism, I'm documenting the exact recruitment pitch used by [group] to lure vulnerable people. Here it is verbatim so the public knows what to watch for:",
+      "thread": [{ "text": "This is exactly the tactic they used on my cousin" }]
+    },
+    "m7": {
+      "text": "My employer is illegally dumping toxic waste into the river — here is the internal safety report they buried and never filed with regulators",
+      "thread": [{ "text": "The EPA tip line is 1-800-424-8802" }, { "text": "This needs to go public immediately" }]
+    },
+    "m8": {
+      "text": "Imagine if we just [violent act] to fix our broken political system lol 😂 just kidding... or am I?",
+      "thread": [{ "text": "Why is this still up?" }, { "text": "Report it" }]
+    },
+    "m9": {
+      "text": "Launching my indie photo editing app today — free tier available, no watermarks! Link in my profile.",
+      "thread": []
+    },
+    "m10": {
+      "text": "Best app ever ❤️",
+      "thread": []
+    }
   },
   "ground_truth": {
-    "m1": { "label": "keep", "policy_id": "P4" },
-    "m2": { "label": "keep", "policy_id": "P4" },
-    "m3": { "label": "keep", "policy_id": "P4" },
-    "m4": { "label": "remove", "policy_id": "P2" },
-    "m5": { "label": "remove", "policy_id": "P3" },
-    "m6": { "label": "keep", "policy_id": "P4" },
-    "m7": { "label": "keep", "policy_id": "P4" },
-    "m8": { "label": "remove", "policy_id": "P2" },
-    "m9": { "label": "remove", "policy_id": "P1" },
-    "m10": { "label": "keep", "policy_id": "P4" }
+    "m1": { "label": "keep",    "policy_id": "P4" },
+    "m2": { "label": "remove",  "policy_id": "P1" },
+    "m3": { "label": "keep",    "policy_id": "P4" },
+    "m4": { "label": "remove",  "policy_id": "P2" },
+    "m5": { "label": "remove",  "policy_id": "P3" },
+    "m6": { "label": "escalate","policy_id": "P5" },
+    "m7": { "label": "escalate","policy_id": "P5" },
+    "m8": { "label": "escalate","policy_id": "P5" },
+    "m9": { "label": "keep",    "policy_id": "P4" },
+    "m10": { "label": "keep",   "policy_id": "P4" }
   },
-  "max_steps": 45
+  "max_steps": 50
 }

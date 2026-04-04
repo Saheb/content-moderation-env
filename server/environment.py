@@ -15,6 +15,7 @@ class ContentModerationEnvironment(Environment):
         self.task_data: Dict[str, Any] | None = None
         self.moderated: set[str] = set()
         self.decisions: Dict[str, str] = {}  # post_id -> agent's decision (for grader)
+        self.viewed_threads: set[str] = set()  # post_ids where view_thread was called
         self.step_count: int = 0
 
         # Realistic VibeNet policy playbook
@@ -32,6 +33,7 @@ class ContentModerationEnvironment(Environment):
         self.task_name = task_name
         self.moderated.clear()
         self.decisions.clear()
+        self.viewed_threads.clear()
         self.step_count = 0
         self.action_history_counts: Dict[str, int] = {}
 
@@ -62,6 +64,8 @@ class ContentModerationEnvironment(Environment):
 
         elif action.type == "view_thread":
             reward += 0.12
+            if action.post_id:
+                self.viewed_threads.add(action.post_id)
             result = f"Thread context for {action.post_id} loaded"
 
         elif action.type == "categorize":
@@ -156,9 +160,14 @@ class ContentModerationEnvironment(Environment):
 
         score = correct / total_posts if total_posts > 0 else 0.0
 
-        # Hard task adds extra penalty for subtle policy/harm failures
+        # Hard task: deduct for context-critical posts where agent skipped thread review.
+        # These posts have ambiguous text that requires reading the thread to decide correctly.
+        # Skipping view_thread on them is a grader-level penalty (not just missing a reward).
         if self.task_name == "hard":
-            score *= 0.82
+            THREAD_REQUIRED_POSTS = {"h5", "h12", "h15"}
+            for pid in THREAD_REQUIRED_POSTS:
+                if pid in self.decisions and pid not in self.viewed_threads:
+                    score -= 0.06  # 3 posts × 0.06 = up to 0.18 deduction
 
         return round(max(0.0, min(1.0, score)), 2)
 

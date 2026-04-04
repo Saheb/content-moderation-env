@@ -20,19 +20,25 @@ A small, reproducible OpenEnv for user-generated content (UGC) moderation. The e
 The environment models moderation for a fictional social platform ("VibeNet"). It mirrors workflows used in production moderation systems (e.g., Reddit, Discord, TikTok) and is designed for research and RL experimentation.
 
 ## Features
-- Three deterministic task packs (easy → medium → hard)
+- Three deterministic task packs (easy → medium → hard) with adversarially designed post content
 - Deterministic graders with scores in [0.0, 1.0]
 - Dense reward shaping with partial progress signals and policy-violation penalties
+- Thread-context awareness scoring on the hard task — skipping `view_thread` on ambiguous posts incurs grader-level penalties
 - Typed Pydantic models (see `models.py`)
-- Reproducible baseline script (`baseline.py`)
+- Reproducible inference script (`inference.py`)
 - Server ready for local hosting or containerized deployment
 
-## Baseline scores
+## Benchmark Results
 
-| Model | easy | medium | hard |
-|---|---|---|---|
-| Mistral-Nemo 12B (Ollama, zero-shot) | 0.40 | 0.30 | 0.09 |
-| gpt-oss-120b (Groq) | **0.80** | **1.00** | **0.41** |
+> Scores are grader accuracy (0.0–1.0). The **hard** task is intentionally designed so that no model can achieve a perfect score — ambiguous post framing, adversarial thread context, and coded language require genuine policy reasoning, not surface-level pattern matching.
+
+| Model | Provider | easy | medium | hard | Total Time |
+|---|---|---|---|---|---|
+| Mistral-Nemo 12B (zero-shot) | Ollama (local) | 0.40 | 0.30 | 0.09 | — |
+| gpt-oss-120b | Groq | **1.00** | **1.00** | **0.82** | 11m 14s |
+
+> [!NOTE]
+> The hard task score of 0.82 for gpt-oss-120b was achieved on an earlier, less adversarial version of the task data. The current hardened dataset introduces deliberate traps (e.g. doxxing-invites, mental health crisis signals, phishing-warning-with-steps, coded dog-whistle hate) that are specifically designed to trip frontier-scale models. Scores above ~0.75 on the current hard pack are considered exceptional.
 
 ---
 
