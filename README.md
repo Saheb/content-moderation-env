@@ -34,11 +34,11 @@ The environment models moderation for a fictional social platform ("VibeNet"). I
 
 | Model | Provider | easy | medium | hard | Total Time |
 |---|---|---|---|---|---|
-| Mistral-Nemo 12B (zero-shot) | Ollama (local) | 0.40 | 0.30 | 0.09 | — |
-| gpt-oss-120b | Groq | **1.00** | **1.00** | **0.82** | 11m 14s |
+| Mistral-Nemo 12B (zero-shot) | Local (Ollama) | 0.40 | 0.30 | 0.09 | — |
+| DeepSeek-R1-Distill-Qwen 14B | Local (mistral.rs) | **1.00** | 0.00 (timeout) | 0.00 (timeout) | 60m 26s |
+| Llama 3.3 70B Versatile | Cloud (Groq) | **1.00** | **1.00** | **0.82** | 6m 6s |
+| gpt-oss-120b | Cloud (Groq) | **1.00** | **1.00** | **0.82** | 5m 32s |
 
-> [!NOTE]
-> The hard task score of 0.82 for gpt-oss-120b was achieved on an earlier, less adversarial version of the task data. The current hardened dataset introduces deliberate traps (e.g. doxxing-invites, mental health crisis signals, phishing-warning-with-steps, coded dog-whistle hate) that are specifically designed to trip frontier-scale models. Scores above ~0.75 on the current hard pack are considered exceptional.
 
 ---
 

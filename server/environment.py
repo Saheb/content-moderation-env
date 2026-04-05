@@ -15,6 +15,7 @@ class ContentModerationEnvironment(Environment):
         self.task_data: Dict[str, Any] | None = None
         self.moderated: set[str] = set()
         self.decisions: Dict[str, str] = {}  # post_id -> agent's decision (for grader)
+        self.post_failures: Dict[str, list[str]] = {} # post_id -> list of failed decisions
         self.viewed_threads: set[str] = set()  # post_ids where view_thread was called
         self.step_count: int = 0
 
@@ -33,6 +34,7 @@ class ContentModerationEnvironment(Environment):
         self.task_name = task_name
         self.moderated.clear()
         self.decisions.clear()
+        self.post_failures.clear()
         self.viewed_threads.clear()
         self.step_count = 0
         self.action_history_counts: Dict[str, int] = {}
@@ -42,9 +44,12 @@ class ContentModerationEnvironment(Environment):
         with open(data_path, encoding="utf-8") as f:
             self.task_data = json.load(f)
 
+        active_post = self._get_active_post()
+        
         return ModerationObservation(
-            queue_summary=self._get_queue(),
-            last_action_result="Episode started — VibeNet moderation queue loaded",
+            active_post_summary=active_post,
+            failed_attempts=self.post_failures.get(active_post["id"], []) if active_post else [],
+            last_action_result="Episode started — VibeNet moderation pipeline ready",
             metadata={"task": task_name, "total_posts": len(self.task_data["items"]) }
         )
 
@@ -91,6 +96,10 @@ class ContentModerationEnvironment(Environment):
                 else:
                     reward -= 0.35
                     result = "Incorrect decision"
+                    if action.post_id not in self.post_failures:
+                        self.post_failures[action.post_id] = []
+                    if action.decision not in self.post_failures[action.post_id]:
+                        self.post_failures[action.post_id].append(action.decision)
 
                 # Heavy penalty for over-censorship (removing safe content)
                 if action.decision == "remove" and correct_label == "keep":
@@ -131,8 +140,11 @@ class ContentModerationEnvironment(Environment):
 
         grader = self._compute_grader_score() if done else None
 
+        active_post = self._get_active_post()
+        
         obs = ModerationObservation(
-            queue_summary=self._get_queue(),
+            active_post_summary=active_post,
+            failed_attempts=self.post_failures.get(active_post["id"], []) if active_post else [],
             last_action_result=result,
             grader_score=grader,
             reward=reward,
@@ -171,15 +183,17 @@ class ContentModerationEnvironment(Environment):
 
         return round(max(0.0, min(1.0, score)), 2)
 
-    def _get_queue(self) -> list[Dict[str, Any]]:
-        return [
-            {
-                "id": pid,
-                "status": "moderated" if pid in self.moderated else "pending",
-                "preview": self.task_data["items"][pid]["text"][:60] + "..." if len(self.task_data["items"][pid]["text"]) > 60 else self.task_data["items"][pid]["text"]
-            }
-            for pid in self.task_data["items"]
-        ]
+    def _get_active_post(self) -> Optional[Dict[str, str]]:
+        if not self.task_data:
+            return None
+        for pid in self.task_data["items"]:
+            if pid not in self.moderated:
+                text = self.task_data["items"][pid]["text"]
+                return {
+                    "id": pid,
+                    "preview": text[:60] + "..." if len(text) > 60 else text
+                }
+        return None
 
     @property
     def state(self) -> ModerationState:

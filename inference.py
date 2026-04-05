@@ -99,18 +99,20 @@ def main() -> None:
                     
                 step += 1
                 obs = result.observation
-                queue = obs.get("queue_summary")
+                active_post = obs.get("active_post_summary")
+                failed_attempts = obs.get("failed_attempts", [])
+                
                 # Weaker models get extremely confused by Pydantic JSON schemas because they start with "type": "object"
                 # Instead of schema draft syntax, give them a simple JSON template to fill out
                 schema_str = """{
   "type": "moderate",
-  "post_id": "<ID of the post from the queue>",
+  "post_id": "<ID of the active post>",
   "decision": "<keep | warn | remove | escalate>",
   "rationale": "<P1 | P2 | P3 | P4 | P5>"
 }"""
 
                 system_prompt = """You are an AI moderator for VibeNet.
-Your task is to review the queue and issue moderation actions.
+Your task is to review the active post and issue a moderation action.
 Available Policies:
   P1: Hate speech or targeted harassment → remove
   P2: Spam, scams, or commercial solicitation → remove
@@ -118,27 +120,29 @@ Available Policies:
   P4: Edgy humor, sarcasm, or strong opinions → keep (optional warn)
   P5: Inciting violence or real-world harm → escalate
 
-To moderate a pending post from the queue, output an action with:
+To moderate the active pending post, output an action with:
   "type": "moderate"
-  "post_id": the id of the post
+  "post_id": the id of the active post
   "decision": "keep", "warn", "remove", or "escalate"
   "rationale": the policy ID applied (e.g. "P4")"""
 
                 last_result = obs.get("last_action_result", "")
                 
-                prompt = f"Observation:\n- Queue: {json.dumps(queue, indent=2)}"
+                prompt = f"Observation:\n- Active Post to Moderate: {json.dumps(active_post, indent=2)}"
                 if last_result:
                     prompt += f"\n- Environment Feedback: {last_result}"
-                    if "Incorrect" in last_result or "Invalid" in last_result:
-                        prompt += "\n  ⚠️ CRITICAL: Your last action was WRONG. You MUST pick a DIFFERENT decision, a DIFFERENT rationale, or process a different post. Do NOT repeat your previous choice."
+                
+                if failed_attempts:
+                    prompt += f"\n  ⚠️ PAST FAILURES: You have already tried these decisions for this post: {failed_attempts}. They were INCORRECT. DO NOT use these decisions again."
+                    
                 prompt += f"\n\nDecide next moderation action.\nRespond ONLY with a JSON object matching this schema:\n{schema_str}"
 
                 print(prompt, file=sys.stderr)
                 
-                msg_list = [{"role": "system", "content": system_prompt}]
-                for entry in history[-6:]:  # keeps conversation moving forward
-                    msg_list.append(entry)
-                msg_list.append({"role": "user", "content": prompt})
+                msg_list = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ]
                 
                 resp = None
                 max_retry_delay = (
@@ -152,24 +156,28 @@ To moderate a pending post from the queue, output an action with:
                             resp = openai_client.chat.completions.create(
                                 model=model,
                                 messages=msg_list,
-                                response_format={
-                                    "type": "json_schema",
-                                    "json_schema": {
-                                        "name": "moderation_action",
-                                        "strict": True,
-                                        "schema": {
-                                            "type": "object",
-                                            "properties": {
-                                                "type": {"type": "string", "enum": ["moderate"]},
-                                                "post_id": {"type": "string"},
-                                                "decision": {"type": "string", "enum": ["keep", "warn", "remove", "escalate"]},
-                                                "rationale": {"type": "string", "enum": ["P1", "P2", "P3", "P4", "P5"]}
-                                            },
-                                            "required": ["type", "post_id", "decision", "rationale"],
-                                            "additionalProperties": False
-                                        }
-                                    }
-                                },
+                                response_format={"type": "json_object"},
+                                # response_format={
+                                #     "type": "json_schema",
+                                #     "json_schema": {
+                                #         "name": "moderation_action",
+                                #         "strict": True,
+                                #         "schema": {
+                                #             "type": "object",
+                                #             "properties": {
+                                #                 "type": {"type": "string", "enum": ["moderate"]},
+                                #                 "post_id": {"type": "string"},
+                                #                 "decision": {"type": "string", "enum": ["keep", "warn", "remove", "escalate"]},
+                                #                 "rationale": {"type": "string", "enum": ["P1", "P2", "P3", "P4", "P5"]}
+                                #             },
+                                #             "required": ["type", "post_id", "decision", "rationale"],
+                                #             "additionalProperties": False
+                                #         }
+                                #     }
+                                # },
+                                temperature=0.1,         # Avoid absolute 0.0
+                                frequency_penalty=0.0,   # Must be 0 for Gemma
+                                presence_penalty=0.0     # Must be 0 for Gemma
                             )
                         except (openai.UnprocessableEntityError, openai.BadRequestError) as e:
                             err_str = str(e).lower()
@@ -221,10 +229,21 @@ To moderate a pending post from the queue, output an action with:
                 reasoning_str = getattr(msg, "reasoning_content", "") or ""
                 raw = (content_str + "\n" + reasoning_str).strip()
                 # Extract JSON block to ignore conversational text from chatty models
+                # Use a brace-counting parser to grab ONLY the first complete JSON object
                 start = raw.find("{")
-                end = raw.rfind("}")
-                if start != -1 and end != -1 and end > start:
-                    raw = raw[start : end + 1]
+                if start != -1:
+                    brace_count = 0
+                    end = -1
+                    for i in range(start, len(raw)):
+                        if raw[i] == '{':
+                            brace_count += 1
+                        elif raw[i] == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end = i
+                                break
+                    if end != -1:
+                        raw = raw[start : end + 1]
 
                 # Pre-clean the JSON strings and filter out hallucinated extra keys
                 data = json.loads(raw)
@@ -277,9 +296,6 @@ To moderate a pending post from the queue, output an action with:
                 
                 action_str = json.dumps(clean_data).replace('"', "'")
                 log_step(step=step, action=action_str, reward=reward, done=done, error=error_msg)
-                
-                history.append({"role": "user", "content": prompt})
-                history.append({"role": "assistant", "content": json.dumps(clean_data)})
 
                 # Preemptive throttle for free APIs like Groq (stays under 12K TPM / 30 RPM limits)
                 # Bypass artificial delay for local endpoints to maximize inference speed

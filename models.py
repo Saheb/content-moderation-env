@@ -14,7 +14,8 @@ class ModerationAction(BaseAction):
     category: Optional[str] = None
 
 class ModerationObservation(BaseObservation):
-    queue_summary: list[Dict[str, Any]]
+    active_post_summary: Optional[Dict[str, str]] = None
+    failed_attempts: list[str] = Field(default_factory=list)
     current_post: Optional[Dict[str, Any]] = None
     thread_context: Optional[list[Dict[str, Any]]] = None
     last_action_result: str
