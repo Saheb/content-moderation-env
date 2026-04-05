@@ -40,6 +40,7 @@ The environment models moderation for a fictional social platform ("VibeNet"). I
 | gemma-4-31b-it | Cloud (Groq/Google) | **1.00** / +2.25 | **1.00** / +3.46 | 0.66 / -0.93 | 7m 34s |
 | Llama 3.3 70B Versatile | Cloud (Groq) | **1.00** / +0.65 | **1.00** / +1.70 | **0.82** / +1.99 | 6m 6s |
 | gpt-oss-120b | Cloud (Groq) | **1.00** / +2.25 | **1.00** / +2.95 | **0.82** / +5.86 | 5m 32s |
+| Gemini 3.1 Flash Lite | Cloud (Google) | **1.00** / +1.90 | **1.00** / +3.30 | **0.82** / **+6.39** | 8m 19s |
 
 
 ---
