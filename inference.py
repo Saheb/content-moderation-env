@@ -175,9 +175,9 @@ To moderate the active pending post, output an action with:
                                     }
                                 }
                             )
-                        except (openai.UnprocessableEntityError, openai.BadRequestError) as e:
+                        except (openai.UnprocessableEntityError, openai.BadRequestError, openai.InternalServerError) as e:
                             err_str = str(e).lower()
-                            if "response_format" in err_str or "json_object" in err_str or "json_schema" in err_str or "unknown variant" in err_str:
+                            if "internal error" in err_str or "response_format" in err_str or "json_object" in err_str or "json_schema" in err_str or "unknown variant" in err_str:
                                 try:
                                     # Fallback 1: generic json_object
                                     resp = openai_client.chat.completions.create(

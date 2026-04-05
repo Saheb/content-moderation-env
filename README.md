@@ -37,6 +37,7 @@ The environment models moderation for a fictional social platform ("VibeNet"). I
 | Mistral-Nemo 12B (zero-shot) | Local (Ollama) | 0.40 / — | 0.30 / — | 0.09 / — | — |
 | DeepSeek-R1-Distill-Qwen 14B | Local (mistral.rs) | **1.00** / +1.37 | 0.00 / +0.31 (timeout) | 0.00 / +0.00 (timeout) | 60m 26s |
 | gpt-oss-20b | Cloud (Groq) | **1.00** / +3.15 | **1.00** / +2.57 | **0.82** / +4.99 | 5m 8s |
+| gemma-4-31b-it | Cloud (Groq/Google) | **1.00** / +2.25 | **1.00** / +3.46 | 0.66 / -0.93 | 7m 34s |
 | Llama 3.3 70B Versatile | Cloud (Groq) | **1.00** / +0.65 | **1.00** / +1.70 | **0.82** / +1.99 | 6m 6s |
 | gpt-oss-120b | Cloud (Groq) | **1.00** / +2.25 | **1.00** / +2.95 | **0.82** / +5.86 | 5m 32s |
 
