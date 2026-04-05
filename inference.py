@@ -156,28 +156,24 @@ To moderate the active pending post, output an action with:
                             resp = openai_client.chat.completions.create(
                                 model=model,
                                 messages=msg_list,
-                                response_format={"type": "json_object"},
-                                # response_format={
-                                #     "type": "json_schema",
-                                #     "json_schema": {
-                                #         "name": "moderation_action",
-                                #         "strict": True,
-                                #         "schema": {
-                                #             "type": "object",
-                                #             "properties": {
-                                #                 "type": {"type": "string", "enum": ["moderate"]},
-                                #                 "post_id": {"type": "string"},
-                                #                 "decision": {"type": "string", "enum": ["keep", "warn", "remove", "escalate"]},
-                                #                 "rationale": {"type": "string", "enum": ["P1", "P2", "P3", "P4", "P5"]}
-                                #             },
-                                #             "required": ["type", "post_id", "decision", "rationale"],
-                                #             "additionalProperties": False
-                                #         }
-                                #     }
-                                # },
-                                temperature=0.1,         # Avoid absolute 0.0
-                                frequency_penalty=0.0,   # Must be 0 for Gemma
-                                presence_penalty=0.0     # Must be 0 for Gemma
+                                response_format={
+                                    "type": "json_schema",
+                                    "json_schema": {
+                                        "name": "moderation_action",
+                                        "strict": True,
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "type": {"type": "string", "enum": ["moderate"]},
+                                                "post_id": {"type": "string"},
+                                                "decision": {"type": "string", "enum": ["keep", "warn", "remove", "escalate"]},
+                                                "rationale": {"type": "string", "enum": ["P1", "P2", "P3", "P4", "P5"]}
+                                            },
+                                            "required": ["type", "post_id", "decision", "rationale"],
+                                            "additionalProperties": False
+                                        }
+                                    }
+                                }
                             )
                         except (openai.UnprocessableEntityError, openai.BadRequestError) as e:
                             err_str = str(e).lower()
@@ -327,6 +323,7 @@ To moderate the active pending post, output an action with:
         print(f"Task: {t: <8} | Score: {m['score']:.2f} | Reward: {m['reward']:>6.2f} | Success: {m['success']}", file=sys.stderr)
     print("-" * 45, file=sys.stderr)
     print(f"Total Time Taken: {int(mins)}m {int(secs)}s", file=sys.stderr)
+    print(f"Model: {model}", file=sys.stderr)
     print("="*45 + "\n", file=sys.stderr)
 
 
