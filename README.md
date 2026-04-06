@@ -41,6 +41,7 @@ The environment models moderation for a fictional social platform ("VibeNet"). I
 | Llama 3.3 70B Versatile | Cloud (Groq) | **1.00** / +0.65 | **1.00** / +1.70 | **0.82** / +1.99 | 6m 6s |
 | gpt-oss-120b | Cloud (Groq) | **1.00** / +2.25 | **1.00** / +2.95 | **0.82** / +5.86 | 5m 32s |
 | Gemini 3.1 Flash Lite | Cloud (Google) | **1.00** / +1.90 | **1.00** / +3.30 | **0.82** / **+6.39** | 8m 19s |
+| Qwen 3 32B | Cloud (Groq) | **1.00** / +2.25 | **1.00** / +4.72 | **0.82** / **+6.39** | 6m 23s |
 
 
 ---
@@ -120,26 +121,26 @@ uv run python inference.py
 export HF_TOKEN=AIza...
 export API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 export MODEL_NAME=gemini-2.0-flash
-uv run python baseline.py
+uv run python inference.py
 
 # Groq
 export HF_TOKEN=gsk_...
 export API_BASE_URL=https://api.groq.com/openai/v1
 export MODEL_NAME=llama-3.3-70b-versatile
-uv run python baseline.py
+uv run python inference.py
 
 # Local Ollama
 export API_BASE_URL=http://localhost:11434/v1
 export HF_TOKEN=ollama
 export MODEL_NAME=llama3
-uv run python baseline.py
+uv run python inference.py
 ```
 
 ## Deploying (Hugging Face Spaces)
 You can deploy using a Docker-based Space:
 - Create a new Space on https://huggingface.co/new-space and choose the Docker template
 - Link this GitHub repository
-- The `server/Dockerfile` will be used to build the container
+- The root `Dockerfile` will be used to build the container
 
 ## Project layout
 ```
@@ -152,12 +153,12 @@ content-moderation-env/
 ├── server/                # FastAPI OpenEnv server
 │   ├── __init__.py
 │   ├── environment.py     # Core logic + rewards + graders
-│   ├── app.py
-│   └── Dockerfile
-├── baseline.py            # Reproducible inference script
+│   └── app.py
+├── Dockerfile             # Container configuration for HF Spaces
+├── inference.py           # Reproducible baseline inference script
 ├── openenv.yaml           # OpenEnv metadata
 ├── pyproject.toml
-├── README.md
+└── README.md
 ```
 
 ## Notes & missing/optional files

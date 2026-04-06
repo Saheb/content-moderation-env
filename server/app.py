@@ -17,14 +17,14 @@ def create_app():
         observation_cls=ModerationObservation,
     )
     
-    # Required for Hugging Face Spaces Load Balancer Health Check
-    @app.get("/")
+    @app.get("/", tags=["Health"])
     def root():
+        """Root endpoint returning basic environment status."""
         return {"status": "ok", "message": "Content moderation environment running"}
     
-    @app.get("/health")
+    @app.get("/health", tags=["Health"])
     def health():
-        """Health check endpoint for load balancers."""
+        """Standard health check endpoint for monitoring."""
         return {"status": "healthy"}
         
     logger.info("FastAPI app created successfully")
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 # Module-level app for runners that expect `server.app:app` (no --factory)
 app = create_app()
 
-# Readiness endpoint often checked by hosting platforms
-@app.get("/ready")
+@app.get("/ready", tags=["Health"])
 def ready():
+    """Readiness endpoint often used by cloud platforms for startup probes."""
     return {"status": "ready"}

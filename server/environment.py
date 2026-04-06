@@ -9,6 +9,12 @@ from models import ModerationAction, ModerationObservation, ModerationState
 
 
 class ContentModerationEnvironment(Environment):
+    """
+    OpenEnv-compatible environment for evaluating AI content moderation agents.
+    
+    The environment simulates a sequential moderation pipeline where an agent
+    must review posts, check context, and apply policies.
+    """
     def __init__(self):
         self.episode_id: str | None = None
         self.task_name: str | None = None
@@ -18,6 +24,7 @@ class ContentModerationEnvironment(Environment):
         self.post_failures: Dict[str, list[str]] = {} # post_id -> list of failed decisions
         self.viewed_threads: set[str] = set()  # post_ids where view_thread was called
         self.step_count: int = 0
+        self.action_history_counts: Dict[str, int] = {}
 
         # Realistic VibeNet policy playbook
         self.policies: Dict[str, str] = {
@@ -29,6 +36,7 @@ class ContentModerationEnvironment(Environment):
         }
 
     def reset(self, seed: Optional[int] = None, episode_id: Optional[str] = None, **kwargs) -> ModerationObservation:
+        """Resets the environment for a new moderation task (easy, medium, or hard)."""
         task_name = kwargs.get("task_name", "easy")
         self.episode_id = str(uuid.uuid4())
         self.task_name = task_name
@@ -54,6 +62,7 @@ class ContentModerationEnvironment(Environment):
         )
 
     def step(self, action: ModerationAction, timeout_s: Optional[float] = None, **kwargs) -> ModerationObservation:
+        """Executes one moderation action and returns the resulting observation and reward."""
         self.step_count += 1
         reward: float = 0.0
         result: str = ""
@@ -158,7 +167,10 @@ class ContentModerationEnvironment(Environment):
         return obs
 
     def _compute_grader_score(self) -> float:
-        """Deterministic 0.0–1.0 grader (25% rubric requirement)."""
+        """
+        Computes the final deterministic grader score (0.0 to 1.0).
+        Calculates accuracy against ground truth and applies penalties for missing context on hard tasks.
+        """
         if not self.task_data:
             return 0.0
 
@@ -184,6 +196,7 @@ class ContentModerationEnvironment(Environment):
         return round(max(0.0, min(1.0, score)), 2)
 
     def _get_active_post(self) -> Optional[Dict[str, str]]:
+        """Identifies the next pending post in the sequential queue."""
         if not self.task_data:
             return None
         for pid in self.task_data["items"]:

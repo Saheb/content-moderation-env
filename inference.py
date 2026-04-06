@@ -51,11 +51,16 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
+import openai
 from openai import OpenAI, RateLimitError
 from models import ModerationAction
 
 
 def main() -> None:
+    """
+    Main entry point for running the content moderation agent.
+    Iterates through easy, medium, and hard task packs and logs performance.
+    """
     # Optional: load environment variables from a .env file if available
     try:
         from dotenv import load_dotenv
@@ -148,11 +153,11 @@ To moderate the active pending post, output an action with:
                 max_retry_delay = (
                     300  # 5 minutes — beyond this likely means daily quota exhausted
                 )
+                # Attempt generation with exponential backoff for rate limits
                 for attempt in range(6):
                     try:
-                        import openai
                         try:
-                            # Try strict json_schema first
+                            # 1. Primary Attempt: Strict JSON Schema (Best for GPT-4 / Groq)
                             resp = openai_client.chat.completions.create(
                                 model=model,
                                 messages=msg_list,
@@ -185,8 +190,8 @@ To moderate the active pending post, output an action with:
                                         messages=msg_list,
                                         response_format={"type": "json_object"},
                                     )
-                                except (openai.UnprocessableEntityError, openai.BadRequestError):
-                                    # Fallback 2: plain text
+                                except (openai.UnprocessableEntityError, openai.BadRequestError, openai.InternalServerError):
+                                    # Fallback 2: Plain Text (Worst case)
                                     resp = openai_client.chat.completions.create(
                                         model=model,
                                         messages=msg_list,
@@ -194,8 +199,7 @@ To moderate the active pending post, output an action with:
                             else:
                                 raise e
                                 
-                        print(resp, file=sys.stderr)
-                        break  # Success
+                        break  # Break retry loop on successful generation
                     except RateLimitError as e:
                         if attempt == 5:
                             raise e

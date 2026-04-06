@@ -3,7 +3,7 @@ name = "content-moderation-env"
 version = "0.1.0"
 description = "First UGC Content Moderation OpenEnv for Meta PyTorch Hackathon"
 requires-python = ">=3.10"
-dependencies = ["openenv-core>=0.2.0", "pydantic>=2.0", "fastapi>=0.110", "uvicorn"]
+dependencies = ["openenv-core>=0.2.0", "pydantic>=2.0", "fastapi>=0.110", "uvicorn", "python-dotenv"]
 
 [project.optional-dependencies]
 baseline = ["openai>=1.0"]

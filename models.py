@@ -6,21 +6,23 @@ from typing import Literal, Dict, Any, Optional
 from openenv.core.env_server import Action as BaseAction, Observation as BaseObservation, State
 
 class ModerationAction(BaseAction):
-    type: Literal["view_post", "view_thread", "categorize", "moderate", "lookup_policy", "escalate"]
-    post_id: Optional[str] = None
-    decision: Optional[Literal["keep", "warn", "remove", "escalate"]] = None
-    rationale: Optional[str] = None
-    policy_id: Optional[str] = None
-    category: Optional[str] = None
+    """Action schema for moderation decisions and context lookups."""
+    type: Literal["view_post", "view_thread", "categorize", "moderate", "lookup_policy", "escalate"] = Field(description="The type of action to perform")
+    post_id: Optional[str] = Field(None, description="The ID of the post being acted upon")
+    decision: Optional[Literal["keep", "warn", "remove", "escalate"]] = Field(None, description="The moderation decision (for type='moderate')")
+    rationale: Optional[str] = Field(None, description="The policy ID (e.g. P1) supporting the decision")
+    policy_id: Optional[str] = Field(None, description="The policy ID to look up (for type='lookup_policy')")
+    category: Optional[str] = Field(None, description="The preliminary category (for type='categorize')")
 
 class ModerationObservation(BaseObservation):
-    active_post_summary: Optional[Dict[str, str]] = None
-    failed_attempts: list[str] = Field(default_factory=list)
-    current_post: Optional[Dict[str, Any]] = None
-    thread_context: Optional[list[Dict[str, Any]]] = None
-    last_action_result: str
-    grader_score: Optional[float] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    """Observation schema returned by the ContentModerationEnvironment."""
+    active_post_summary: Optional[Dict[str, str]] = Field(None, description="A preview of the current active post")
+    failed_attempts: list[str] = Field(default_factory=list, description="List of decisions previously tried on this post and marked incorrect")
+    current_post: Optional[Dict[str, Any]] = Field(None, description="Full details of the active post if loaded")
+    thread_context: Optional[list[Dict[str, Any]]] = Field(None, description="Thread messages if loaded")
+    last_action_result: str = Field(..., description="A status message describing the result of the last action")
+    grader_score: Optional[float] = Field(None, description="Final score, only provided when the episode is done")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional environment metadata")
 
 class ModerationState(State):
     episode_id: str
