@@ -168,7 +168,7 @@
 
 <header>
   <h1>Content Moderation OpenEnv <span class="badge">Benchmark</span></h1>
-  <p>Meta PyTorch OpenEnv Hackathon · Round 1 · March 2026 · 3 difficulty tiers</p>
+  <p>Meta PyTorch OpenEnv Hackathon · Round 1 · March 2026 · 4 difficulty tiers</p>
 </header>
 
 <!-- ── Score comparison (full width) ── -->
@@ -178,15 +178,20 @@
     <span class="legend-item"><span class="legend-dot" style="background:var(--easy)"></span>Easy</span>
     <span class="legend-item"><span class="legend-dot" style="background:var(--medium)"></span>Medium</span>
     <span class="legend-item"><span class="legend-dot" style="background:var(--hard)"></span>Hard</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#a78bfa"></span>Very Hard</span>
   </div>
   <div class="chart-wrap"><canvas id="scoreChart"></canvas></div>
 </div>
 
-<!-- ── Reward + Hard-only cards ── -->
+<!-- ── Reward cards ── -->
 <div class="grid">
   <div class="card">
     <h2>Cumulative Reward — Hard Task</h2>
     <div class="chart-wrap"><canvas id="rewardHardChart"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Cumulative Reward — Very Hard Task</h2>
+    <div class="chart-wrap"><canvas id="rewardVeryHardChart"></canvas></div>
   </div>
   <div class="card">
     <h2>Total Reward Across All Tasks</h2>
@@ -208,6 +213,8 @@
           <th>Medium Rwd</th>
           <th>Hard Score</th>
           <th>Hard Rwd</th>
+          <th>Very Hard Score</th>
+          <th>Very Hard Rwd</th>
           <th>Time</th>
         </tr>
       </thead>
@@ -218,9 +225,11 @@
 
 <footer>
   <p>
-    Source: <a href="https://github.com/sahebmotiani/content-moderation-env" target="_blank">content-moderation-env</a>
-    · Hard task max score without thread-context reading: <strong>0.82</strong>
-    · Reward range on hard: <strong>−0.93 → +6.39</strong>
+    Source: <a href="https://github.com/saheb/content-moderation-env" target="_blank">content-moderation-env</a>
+    · Hard max score without thread reading: <strong>0.82</strong>
+    · Hard reward range: <strong>−0.93 → +6.39</strong>
+    · Very hard max score without thread reading: <strong>0.44</strong>
+    · Very hard reward range: <strong>+1.38 → +2.96</strong>
   </p>
 </footer>
 
@@ -228,21 +237,21 @@
 // ── Data ──────────────────────────────────────────────────────────────────────
 const RESULTS = [
   { model: "Mistral-Nemo 12B (zero-shot)", provider: "Local (Ollama)",
-    easy: { score: 0.40, rwd: null }, medium: { score: 0.30, rwd: null }, hard: { score: 0.09, rwd: null }, time: null },
+    easy: { score: 0.40, rwd: null }, medium: { score: 0.30, rwd: null }, hard: { score: 0.09, rwd: null }, very_hard: { score: null, rwd: null }, time: null },
   { model: "DeepSeek-R1-Distill 14B",      provider: "Local (mistral.rs)",
-    easy: { score: 1.00, rwd: 1.37 }, medium: { score: 0.00, rwd: 0.31 }, hard: { score: 0.00, rwd: 0.00 }, time: "60m 26s" },
+    easy: { score: 1.00, rwd: 1.37 }, medium: { score: 0.00, rwd: 0.31 }, hard: { score: 0.00, rwd: 0.00 }, very_hard: { score: null, rwd: null }, time: "60m 26s" },
   { model: "gpt-oss-20b",                   provider: "Cloud (Groq)",
-    easy: { score: 1.00, rwd: 3.15 }, medium: { score: 1.00, rwd: 2.57 }, hard: { score: 0.82, rwd: 4.99 }, time: "5m 8s" },
+    easy: { score: 1.00, rwd: 3.15 }, medium: { score: 1.00, rwd: 2.57 }, hard: { score: 0.82, rwd: 4.99 }, very_hard: { score: 0.44, rwd: 1.38 }, time: "5m 8s" },
   { model: "gemma-4-31b-it",                provider: "Cloud (Groq/Google)",
-    easy: { score: 1.00, rwd: 2.25 }, medium: { score: 1.00, rwd: 3.46 }, hard: { score: 0.66, rwd: -0.93 }, time: "7m 34s" },
+    easy: { score: 1.00, rwd: 2.25 }, medium: { score: 1.00, rwd: 3.46 }, hard: { score: 0.66, rwd: -0.93 }, very_hard: { score: null, rwd: null }, time: "7m 34s" },
   { model: "Llama 3.3 70B Versatile",       provider: "Cloud (Groq)",
-    easy: { score: 1.00, rwd: 0.65 }, medium: { score: 1.00, rwd: 1.70 }, hard: { score: 0.82, rwd: 1.99 }, time: "6m 6s" },
+    easy: { score: 1.00, rwd: 0.65 }, medium: { score: 1.00, rwd: 1.70 }, hard: { score: 0.82, rwd: 1.99 }, very_hard: { score: null, rwd: null }, time: "6m 6s" },
   { model: "gpt-oss-120b",                  provider: "Cloud (Groq)",
-    easy: { score: 1.00, rwd: 2.25 }, medium: { score: 1.00, rwd: 2.95 }, hard: { score: 0.82, rwd: 5.86 }, time: "5m 32s" },
+    easy: { score: 1.00, rwd: 2.25 }, medium: { score: 1.00, rwd: 2.95 }, hard: { score: 0.82, rwd: 5.86 }, very_hard: { score: 0.44, rwd: 2.96 }, time: "5m 32s" },
   { model: "Gemini 3.1 Flash Lite",         provider: "Cloud (Google)",
-    easy: { score: 1.00, rwd: 1.90 }, medium: { score: 1.00, rwd: 3.30 }, hard: { score: 0.82, rwd: 6.39 }, time: "8m 19s" },
+    easy: { score: 1.00, rwd: 1.90 }, medium: { score: 1.00, rwd: 3.30 }, hard: { score: 0.82, rwd: 6.39 }, very_hard: { score: null, rwd: null }, time: "8m 19s" },
   { model: "Qwen 3 32B",                    provider: "Cloud (Groq)",
-    easy: { score: 1.00, rwd: 2.25 }, medium: { score: 1.00, rwd: 4.72 }, hard: { score: 0.82, rwd: 6.39 }, time: "6m 23s" },
+    easy: { score: 1.00, rwd: 2.25 }, medium: { score: 1.00, rwd: 4.72 }, hard: { score: 0.82, rwd: 6.39 }, very_hard: { score: 0.44, rwd: 2.62 }, time: "13m 56s" },
 ];
 
 // Sort by hard score desc, then hard reward desc
@@ -310,6 +319,13 @@ new Chart(document.getElementById("scoreChart"), {
         borderRadius: 4,
         barPercentage: 0.7,
       },
+      {
+        label: "Very Hard",
+        data: sorted.map(r => r.very_hard.score),
+        backgroundColor: "rgba(167,139,250,0.75)",
+        borderRadius: 4,
+        barPercentage: 0.7,
+      },
     ],
   },
   options: {
@@ -365,12 +381,44 @@ new Chart(document.getElementById("rewardHardChart"), {
   },
 });
 
+// ── Very Hard reward chart ─────────────────────────────────────────────────────
+new Chart(document.getElementById("rewardVeryHardChart"), {
+  type: "bar",
+  data: {
+    labels,
+    datasets: [{
+      label: "Very Hard Reward",
+      data: sorted.map(r => r.very_hard.rwd),
+      backgroundColor: sorted.map(r =>
+        r.very_hard.rwd === null ? "#2e3147"
+        : r.very_hard.rwd >= 0  ? "rgba(167,139,250,0.75)"
+                                  : "rgba(248,113,113,0.75)"
+      ),
+      borderRadius: 4,
+      barPercentage: 0.65,
+    }],
+  },
+  options: {
+    ...baseBarOpts,
+    plugins: {
+      ...baseBarOpts.plugins,
+      tooltip: {
+        ...baseBarOpts.plugins.tooltip,
+        callbacks: {
+          label: ctx => ctx.raw === null ? " N/A" : ` Reward: ${ctx.parsed.y.toFixed(2)}`,
+        },
+      },
+    },
+  },
+});
+
 // ── Total reward chart ─────────────────────────────────────────────────────────
 const totalRewards = sorted.map(r => {
   const e = r.easy.rwd ?? 0;
   const m = r.medium.rwd ?? 0;
   const h = r.hard.rwd ?? 0;
-  return +(e + m + h).toFixed(2);
+  const vh = r.very_hard.rwd ?? 0;
+  return +(e + m + h + vh).toFixed(2);
 });
 
 new Chart(document.getElementById("rewardTotalChart"), {
@@ -430,6 +478,8 @@ sorted.forEach(r => {
     <td>${rwdFmt(r.medium.rwd)}</td>
     <td>${scoreFmt(r.hard.score)}</td>
     <td>${rwdFmt(r.hard.rwd)}</td>
+    <td>${scoreFmt(r.very_hard.score)}</td>
+    <td>${rwdFmt(r.very_hard.rwd)}</td>
     <td style="color:var(--muted)">${r.time ?? "—"}</td>
   `;
   tbody.appendChild(tr);

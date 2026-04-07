@@ -22,6 +22,8 @@ class ModerationObservation(BaseObservation):
     thread_context: Optional[list[Dict[str, Any]]] = Field(None, description="Thread messages if loaded")
     last_action_result: str = Field(..., description="A status message describing the result of the last action")
     grader_score: Optional[float] = Field(None, description="Final score, only provided when the episode is done")
+    reward: Optional[float] = Field(None, description="Per-step reward from the last action")
+    done: Optional[bool] = Field(None, description="Whether the episode has ended")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional environment metadata")
 
 class ModerationState(State):

@@ -106,21 +106,17 @@ def main() -> None:
     final_summary = {}
 
     for task in ["easy", "medium", "hard", "very_hard"]:
+        # Initialise per-task state before try so finally can always emit [END]
+        rewards: List[float] = []
+        step = 0
+        score = 0.0
+        success = False
+        total_reward = 0.0
+
+        log_start(task=task, env="content-moderation-env", model=model)
         try:
             _connect_with_retry(client)
-        except Exception as e:
-            print(f"Failed to connect to env server for task '{task}': {e}", file=sys.stderr)
-            final_summary[task] = {"score": 0.0, "reward": 0.0, "success": False}
-            log_end(success=False, steps=0, score=0.0, rewards=[])
-            continue
-
-        try:
             result = client.reset(task_name=task)
-            total_reward = 0.0
-            rewards = []
-            history = []
-            step = 0
-            log_start(task=task, env="content-moderation-env", model=model)
             # result is a StepResult where `.observation` is a dict (Generic client)
             done = result.done if hasattr(result, "done") else False
             while not done:
@@ -348,9 +344,15 @@ To moderate the active pending post, output an action with:
             )
             success = score >= 0.8
             final_summary[task] = {"score": score, "reward": total_reward, "success": success}
-            log_end(success=success, steps=step, score=score, rewards=rewards)
+        except Exception as e:
+            print(f"Task '{task}' failed: {e}", file=sys.stderr)
+            final_summary[task] = {"score": score, "reward": total_reward, "success": False}
         finally:
-            client.close()
+            try:
+                client.close()
+            except Exception:
+                pass
+            log_end(success=success, steps=step, score=score, rewards=rewards)
 
     total_time = time.time() - global_start_time
     mins, secs = divmod(total_time, 60)
