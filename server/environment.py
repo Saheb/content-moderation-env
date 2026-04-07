@@ -133,7 +133,7 @@ class ContentModerationEnvironment(Environment):
             result = "Unknown action type"
 
         # Apply loop penalty based on task difficulty level
-        limit = {"easy": 3, "medium": 4, "hard": 5}.get(self.task_name, 3)
+        limit = {"easy": 3, "medium": 4, "hard": 5, "very_hard": 5}.get(self.task_name, 3)
         loop_exceeded = False
         
         if action.type == "moderate" and action.post_id and action.decision:
@@ -184,7 +184,7 @@ class ContentModerationEnvironment(Environment):
 
         score = correct / total_posts if total_posts > 0 else 0.0
 
-        # Hard task: deduct for context-critical posts where agent skipped thread review.
+        # Hard / very_hard: deduct for context-critical posts where agent skipped thread review.
         # These posts have ambiguous text that requires reading the thread to decide correctly.
         # Skipping view_thread on them is a grader-level penalty (not just missing a reward).
         if self.task_name == "hard":
@@ -192,6 +192,13 @@ class ContentModerationEnvironment(Environment):
             for pid in THREAD_REQUIRED_POSTS:
                 if pid in self.decisions and pid not in self.viewed_threads:
                     score -= 0.06  # 3 posts × 0.06 = up to 0.18 deduction
+
+        if self.task_name == "very_hard":
+            # All posts with threads are context-critical — the thread is the deciding signal.
+            THREAD_REQUIRED_POSTS = {"vh1", "vh2", "vh3", "vh4", "vh5", "vh6", "vh8", "vh9", "vh11", "vh12", "vh13", "vh14", "vh15", "vh20"}
+            for pid in THREAD_REQUIRED_POSTS:
+                if pid in self.decisions and pid not in self.viewed_threads:
+                    score -= 0.04  # up to 0.56 deduction across 14 posts
 
         return round(max(0.0, min(1.0, score)), 2)
 

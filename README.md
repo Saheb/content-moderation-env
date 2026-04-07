@@ -20,17 +20,19 @@ A small, reproducible OpenEnv for user-generated content (UGC) moderation. The e
 The environment models moderation for a fictional social platform ("VibeNet"). It mirrors workflows used in production moderation systems (e.g., Reddit, Discord, TikTok) and is designed for research and RL experimentation.
 
 ## Features
-- Three deterministic task packs (easy → medium → hard) with adversarially designed post content
+- Four deterministic task packs (easy → medium → hard → very_hard) with adversarially designed post content
 - Deterministic graders with scores in [0.0, 1.0]
 - Dense reward shaping with partial progress signals and policy-violation penalties
-- Thread-context awareness scoring on the hard task — skipping `view_thread` on ambiguous posts incurs grader-level penalties
+- Thread-context awareness scoring — skipping `view_thread` on context-critical posts incurs grader-level penalties (hard: 3 posts; very_hard: 14 posts)
 - Typed Pydantic models (see `models.py`)
 - Reproducible inference script (`inference.py`)
 - Server ready for local hosting or containerized deployment
 
 ## Benchmark Results
 
-> Scores are grader accuracy (0.0–1.0). The **hard** task is intentionally designed so that no model can achieve a perfect score — ambiguous post framing, adversarial thread context, and coded language require genuine policy reasoning, not surface-level pattern matching.
+> Scores are grader accuracy (0.0–1.0). Rewards are shaped for RL — on the hard task, reward ranges from **−0.93 to +6.39**, providing meaningful separation even when scores converge. The **hard** task is intentionally designed so that no model can achieve a perfect score without reading thread context — ambiguous post framing, adversarial replies, and coded language require genuine policy reasoning.
+>
+> **Interactive visualization:** [`benchmark.html`](./benchmark.html) — bar charts for scores and rewards across all tiers.
 
 | Model | Provider | Easy (Score / Rwd) | Medium (Score / Rwd) | Hard (Score / Rwd) | Total Time |
 |---|---|---|---|---|---|
@@ -43,6 +45,9 @@ The environment models moderation for a fictional social platform ("VibeNet"). I
 | Gemini 3.1 Flash Lite | Cloud (Google) | **1.00** / +1.90 | **1.00** / +3.30 | **0.82** / **+6.39** | 8m 19s |
 | Qwen 3 32B | Cloud (Groq) | **1.00** / +2.25 | **1.00** / +4.72 | **0.82** / **+6.39** | 6m 23s |
 
+### Why reward matters more than score on the hard task
+
+Easy and medium show a ceiling effect — every cloud model hits 1.00. Hard shows score convergence at 0.82 for most models. But reward on hard ranges from **−0.93** (gemma) to **+6.39** (Gemini Flash Lite, Qwen 3 32B), which reveals genuine quality differences in how efficiently and confidently models reach correct decisions. Score alone is insufficient for evaluating frontier moderation agents; reward shaping is what separates them.
 
 ---
 
@@ -145,15 +150,17 @@ You can deploy using a Docker-based Space:
 ## Project layout
 ```
 content-moderation-env/
-├── data/                  # Deterministic task packs (easy/medium/hard)
+├── data/                  # Deterministic task packs (easy/medium/hard/very_hard)
 │   ├── easy.json
 │   ├── medium.json
-│   └── hard.json
+│   ├── hard.json
+│   └── very_hard.json
 ├── models.py              # Typed Action, Observation, State
 ├── server/                # FastAPI OpenEnv server
 │   ├── __init__.py
 │   ├── environment.py     # Core logic + rewards + graders
 │   └── app.py
+├── benchmark.html         # Interactive benchmark visualization
 ├── Dockerfile             # Container configuration for HF Spaces
 ├── inference.py           # Reproducible baseline inference script
 ├── openenv.yaml           # OpenEnv metadata

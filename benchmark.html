@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Content Moderation OpenEnv — Benchmark Results</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222536;
+      --border: #2e3147;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --accent: #6366f1;
+      --easy: #22c55e;
+      --medium: #f59e0b;
+      --hard: #ef4444;
+      --reward-pos: #34d399;
+      --reward-neg: #f87171;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 2rem 1.5rem;
+      min-height: 100vh;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.4rem;
+    }
+    header p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.2em 0.6em;
+      border-radius: 999px;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+      max-width: 1100px;
+      margin: 0 auto 2rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+    }
+    .card h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .chart-wrap {
+      position: relative;
+      height: 280px;
+    }
+
+    /* full-width chart */
+    .card.full {
+      max-width: 1100px;
+      margin: 0 auto 1.25rem;
+    }
+    .card.full .chart-wrap { height: 320px; }
+
+    /* ── legend pills ── */
+    .legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+
+    /* ── table ── */
+    .table-wrap {
+      max-width: 1100px;
+      margin: 0 auto 2rem;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    thead th {
+      background: var(--surface2);
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.72rem;
+      padding: 0.65rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td {
+      padding: 0.6rem 1rem;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .score-perfect { color: var(--easy); font-weight: 600; }
+    .score-good    { color: var(--medium); font-weight: 600; }
+    .score-poor    { color: var(--hard); }
+    .rwd-pos { color: var(--reward-pos); }
+    .rwd-neg { color: var(--reward-neg); }
+    .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 0.15em 0.5em;
+      border-radius: 4px;
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Content Moderation OpenEnv <span class="badge">Benchmark</span></h1>
+  <p>Meta PyTorch OpenEnv Hackathon · Round 1 · March 2026 · 3 difficulty tiers</p>
+</header>
+
+<!-- ── Score comparison (full width) ── -->
+<div class="card full">
+  <h2>Grader Score by Difficulty Tier</h2>
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="background:var(--easy)"></span>Easy</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--medium)"></span>Medium</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--hard)"></span>Hard</span>
+  </div>
+  <div class="chart-wrap"><canvas id="scoreChart"></canvas></div>
+</div>
+
+<!-- ── Reward + Hard-only cards ── -->
+<div class="grid">
+  <div class="card">
+    <h2>Cumulative Reward — Hard Task</h2>
+    <div class="chart-wrap"><canvas id="rewardHardChart"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Total Reward Across All Tasks</h2>
+    <div class="chart-wrap"><canvas id="rewardTotalChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ── Full table ── -->
+<div class="table-wrap">
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table id="resultsTable">
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Provider</th>
+          <th>Easy Score</th>
+          <th>Easy Rwd</th>
+          <th>Medium Score</th>
+          <th>Medium Rwd</th>
+          <th>Hard Score</th>
+          <th>Hard Rwd</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<footer>
+  <p>
+    Source: <a href="https://github.com/sahebmotiani/content-moderation-env" target="_blank">content-moderation-env</a>
+    · Hard task max score without thread-context reading: <strong>0.82</strong>
+    · Reward range on hard: <strong>−0.93 → +6.39</strong>
+  </p>
+</footer>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const RESULTS = [
+  { model: "Mistral-Nemo 12B (zero-shot)", provider: "Local (Ollama)",
+    easy: { score: 0.40, rwd: null }, medium: { score: 0.30, rwd: null }, hard: { score: 0.09, rwd: null }, time: null },
+  { model: "DeepSeek-R1-Distill 14B",      provider: "Local (mistral.rs)",
+    easy: { score: 1.00, rwd: 1.37 }, medium: { score: 0.00, rwd: 0.31 }, hard: { score: 0.00, rwd: 0.00 }, time: "60m 26s" },
+  { model: "gpt-oss-20b",                   provider: "Cloud (Groq)",
+    easy: { score: 1.00, rwd: 3.15 }, medium: { score: 1.00, rwd: 2.57 }, hard: { score: 0.82, rwd: 4.99 }, time: "5m 8s" },
+  { model: "gemma-4-31b-it",                provider: "Cloud (Groq/Google)",
+    easy: { score: 1.00, rwd: 2.25 }, medium: { score: 1.00, rwd: 3.46 }, hard: { score: 0.66, rwd: -0.93 }, time: "7m 34s" },
+  { model: "Llama 3.3 70B Versatile",       provider: "Cloud (Groq)",
+    easy: { score: 1.00, rwd: 0.65 }, medium: { score: 1.00, rwd: 1.70 }, hard: { score: 0.82, rwd: 1.99 }, time: "6m 6s" },
+  { model: "gpt-oss-120b",                  provider: "Cloud (Groq)",
+    easy: { score: 1.00, rwd: 2.25 }, medium: { score: 1.00, rwd: 2.95 }, hard: { score: 0.82, rwd: 5.86 }, time: "5m 32s" },
+  { model: "Gemini 3.1 Flash Lite",         provider: "Cloud (Google)",
+    easy: { score: 1.00, rwd: 1.90 }, medium: { score: 1.00, rwd: 3.30 }, hard: { score: 0.82, rwd: 6.39 }, time: "8m 19s" },
+  { model: "Qwen 3 32B",                    provider: "Cloud (Groq)",
+    easy: { score: 1.00, rwd: 2.25 }, medium: { score: 1.00, rwd: 4.72 }, hard: { score: 0.82, rwd: 6.39 }, time: "6m 23s" },
+];
+
+// Sort by hard score desc, then hard reward desc
+const sorted = [...RESULTS].sort((a, b) =>
+  b.hard.score - a.hard.score || (b.hard.rwd ?? -Infinity) - (a.hard.rwd ?? -Infinity)
+);
+
+const labels = sorted.map(r => r.model);
+
+// ── Chart defaults ─────────────────────────────────────────────────────────────
+Chart.defaults.color = "#8892a4";
+Chart.defaults.borderColor = "#2e3147";
+Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+const baseBarOpts = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: "#1a1d27",
+      borderColor: "#2e3147",
+      borderWidth: 1,
+      titleColor: "#e2e8f0",
+      bodyColor: "#8892a4",
+      padding: 10,
+    },
+  },
+  scales: {
+    x: {
+      grid: { color: "#2e3147" },
+      ticks: { color: "#8892a4", font: { size: 11 } },
+    },
+    y: {
+      grid: { color: "#2e3147" },
+      ticks: { color: "#8892a4", font: { size: 11 } },
+    },
+  },
+};
+
+// ── Score chart ────────────────────────────────────────────────────────────────
+new Chart(document.getElementById("scoreChart"), {
+  type: "bar",
+  data: {
+    labels,
+    datasets: [
+      {
+        label: "Easy",
+        data: sorted.map(r => r.easy.score),
+        backgroundColor: "rgba(34,197,94,0.75)",
+        borderRadius: 4,
+        barPercentage: 0.7,
+      },
+      {
+        label: "Medium",
+        data: sorted.map(r => r.medium.score),
+        backgroundColor: "rgba(245,158,11,0.75)",
+        borderRadius: 4,
+        barPercentage: 0.7,
+      },
+      {
+        label: "Hard",
+        data: sorted.map(r => r.hard.score),
+        backgroundColor: "rgba(239,68,68,0.75)",
+        borderRadius: 4,
+        barPercentage: 0.7,
+      },
+    ],
+  },
+  options: {
+    ...baseBarOpts,
+    plugins: {
+      ...baseBarOpts.plugins,
+      legend: {
+        display: true,
+        labels: { color: "#8892a4", boxWidth: 12, font: { size: 11 } },
+      },
+      tooltip: {
+        ...baseBarOpts.plugins.tooltip,
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}`,
+        },
+      },
+    },
+    scales: {
+      ...baseBarOpts.scales,
+      y: { ...baseBarOpts.scales.y, min: 0, max: 1.05 },
+    },
+  },
+});
+
+// ── Hard reward chart ──────────────────────────────────────────────────────────
+new Chart(document.getElementById("rewardHardChart"), {
+  type: "bar",
+  data: {
+    labels,
+    datasets: [{
+      label: "Hard Reward",
+      data: sorted.map(r => r.hard.rwd),
+      backgroundColor: sorted.map(r =>
+        r.hard.rwd === null ? "#2e3147"
+        : r.hard.rwd >= 0   ? "rgba(52,211,153,0.75)"
+                             : "rgba(248,113,113,0.75)"
+      ),
+      borderRadius: 4,
+      barPercentage: 0.65,
+    }],
+  },
+  options: {
+    ...baseBarOpts,
+    plugins: {
+      ...baseBarOpts.plugins,
+      tooltip: {
+        ...baseBarOpts.plugins.tooltip,
+        callbacks: {
+          label: ctx => ctx.raw === null ? " N/A" : ` Reward: ${ctx.parsed.y.toFixed(2)}`,
+        },
+      },
+    },
+  },
+});
+
+// ── Total reward chart ─────────────────────────────────────────────────────────
+const totalRewards = sorted.map(r => {
+  const e = r.easy.rwd ?? 0;
+  const m = r.medium.rwd ?? 0;
+  const h = r.hard.rwd ?? 0;
+  return +(e + m + h).toFixed(2);
+});
+
+new Chart(document.getElementById("rewardTotalChart"), {
+  type: "bar",
+  data: {
+    labels,
+    datasets: [{
+      label: "Total Reward",
+      data: totalRewards,
+      backgroundColor: totalRewards.map(v =>
+        v >= 0 ? "rgba(99,102,241,0.75)" : "rgba(248,113,113,0.75)"
+      ),
+      borderRadius: 4,
+      barPercentage: 0.65,
+    }],
+  },
+  options: {
+    ...baseBarOpts,
+    plugins: {
+      ...baseBarOpts.plugins,
+      tooltip: {
+        ...baseBarOpts.plugins.tooltip,
+        callbacks: {
+          label: ctx => ` Total: ${ctx.parsed.y.toFixed(2)}`,
+        },
+      },
+    },
+  },
+});
+
+// ── Table ──────────────────────────────────────────────────────────────────────
+function scoreClass(s) {
+  if (s === null) return "";
+  if (s >= 1.0) return "score-perfect";
+  if (s >= 0.7) return "score-good";
+  return "score-poor";
+}
+function rwdFmt(v) {
+  if (v === null) return '<span style="color:var(--muted)">—</span>';
+  const cls = v >= 0 ? "rwd-pos" : "rwd-neg";
+  return `<span class="${cls}">${v >= 0 ? "+" : ""}${v.toFixed(2)}</span>`;
+}
+function scoreFmt(v) {
+  if (v === null) return '<span style="color:var(--muted)">—</span>';
+  return `<span class="${scoreClass(v)}">${v.toFixed(2)}</span>`;
+}
+
+const tbody = document.getElementById("tableBody");
+sorted.forEach(r => {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td style="font-weight:500">${r.model}</td>
+    <td><span class="tag">${r.provider}</span></td>
+    <td>${scoreFmt(r.easy.score)}</td>
+    <td>${rwdFmt(r.easy.rwd)}</td>
+    <td>${scoreFmt(r.medium.score)}</td>
+    <td>${rwdFmt(r.medium.rwd)}</td>
+    <td>${scoreFmt(r.hard.score)}</td>
+    <td>${rwdFmt(r.hard.rwd)}</td>
+    <td style="color:var(--muted)">${r.time ?? "—"}</td>
+  `;
+  tbody.appendChild(tr);
+});
+</script>
+</body>
+</html>
