@@ -26,10 +26,12 @@ def create_app():
         observation_cls=ModerationObservation,
     )
 
-    @app.get("/", tags=["Health"])
+    @app.get("/", response_class=HTMLResponse, tags=["UI"])
     def root():
-        """Root endpoint returning basic environment status."""
-        return {"status": "ok", "message": "Content moderation environment running"}
+        """Root endpoint serving the interactive demo UI."""
+        demo_html_path = os.path.join(os.path.dirname(__file__), "..", "demo.html")
+        with open(demo_html_path, encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
 
     @app.get("/health", tags=["Health"])
     def health():

@@ -63,11 +63,25 @@ class ContentModerationEnvironment(Environment):
             last_action_result="Episode started — VibeNet moderation pipeline ready",
             current_post=None,
             thread_context=None,
+            done=False,
+            reward=0.0,
             metadata={"task": task_name, "total_posts": len(self.task_data["items"])}
         )
 
     def step(self, action: ModerationAction, timeout_s: Optional[float] = None, **kwargs) -> ModerationObservation:
         """Executes one moderation action and returns the resulting observation and reward."""
+        # Guard: task_data is None when the env was not reset first (e.g. stateless HTTP /step calls).
+        if self.task_data is None:
+            return ModerationObservation(
+                active_post_summary=None,
+                failed_attempts=[],
+                last_action_result="Environment not initialised — call /reset before /step",
+                current_post=None,
+                thread_context=None,
+                done=True,
+                reward=-1.0,
+                metadata={},
+            )
         self.step_count += 1
         reward: float = 0.0
         result: str = ""
@@ -132,7 +146,7 @@ class ContentModerationEnvironment(Environment):
             result = f"Policy {action.policy_id} looked up: {self.policies.get(action.policy_id, 'Unknown')}"
 
         elif action.type == "escalate":
-            if action.post_id and self.task_data["ground_truth"].get(action.post_id, {}).get("label") == "escalate":
+            if action.post_id and self.task_data and self.task_data["ground_truth"].get(action.post_id, {}).get("label") == "escalate":
                 reward += 0.30
                 self.moderated.add(action.post_id)
                 self.decisions[action.post_id] = "escalate"
