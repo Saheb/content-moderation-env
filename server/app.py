@@ -71,6 +71,14 @@ def demo_page():
         return HTMLResponse(content=f.read())
 
 
+@app.get("/benchmark.html", response_class=HTMLResponse, tags=["UI"])
+def benchmark_page():
+    """Serve the interactive benchmark visualization UI."""
+    benchmark_html_path = os.path.join(os.path.dirname(__file__), "..", "benchmark.html")
+    with open(benchmark_html_path, encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
+
+
 @app.post("/demo/reset", tags=["Demo"])
 def demo_reset(task: str = "easy"):
     """Start a new demo session. Returns session_id and initial observation."""

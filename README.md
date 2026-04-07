@@ -46,7 +46,7 @@ This makes it a useful benchmark environment for evaluating **policy-grounded re
 
 ## Benchmark Results
 
-> **Interactive visualization:** [`benchmark.html`](./benchmark.html) — bar charts for scores and rewards across all tiers.
+> **Interactive visualization:** [Live Benchmark UI](https://saheb-content-moderation-env.hf.space/benchmark.html) — bar charts for scores and rewards across all tiers.
 
 | Model | Provider | Easy (Score / Rwd) | Medium (Score / Rwd) | Hard (Score / Rwd) | Very Hard (Score / Rwd) | Total Time |
 |---|---|---|---|---|---|---|
@@ -54,15 +54,16 @@ This makes it a useful benchmark environment for evaluating **policy-grounded re
 | DeepSeek-R1-Distill-Qwen 14B | Local (mistral.rs) | **1.00** / +1.37 | 0.00 / +0.31 (timeout) | 0.00 / +0.00 (timeout) | — | 60m 26s |
 | gpt-oss-20b | Cloud (Groq) | **1.00** / +3.15 | **1.00** / +2.57 | **0.82** / +4.99 | 0.44 / +1.38 | 5m 8s |
 | gemma-4-31b-it | Cloud (Groq/Google) | **1.00** / +2.25 | **1.00** / +3.46 | 0.66 / -0.93 | — | 7m 34s |
-| Llama 3.3 70B Versatile | Cloud (Groq) | **1.00** / +0.65 | **1.00** / +1.70 | **0.82** / +1.99 | — | 6m 6s |
+| Llama 3.3 70B Versatile | Cloud (Groq) | **1.00** / +1.35 | **1.00** / +1.17 | **0.82** / +1.64 | 0.44 / +1.37 | 11m 31s |
 | gpt-oss-120b | Cloud (Groq) | **1.00** / +2.25 | **1.00** / +2.95 | **0.82** / +5.86 | 0.44 / +2.96 | 5m 32s |
-| Gemini 3.1 Flash Lite | Cloud (Google) | **1.00** / +1.90 | **1.00** / +3.30 | **0.82** / **+6.39** | — | 8m 19s |
-| Qwen 3 32B | Cloud (Groq) | **1.00** / +2.25 | **1.00** / +4.72 | **0.82** / **+6.39** | 0.44 / +2.62 | 13m 56s |
+| Gemini 3.1 Flash Lite | Cloud (Google) | **1.00** / +1.90 | **1.00** / +3.30 | **0.82** / +6.39 | — | 8m 19s |
+| Qwen 3 32B | Cloud (Groq) | **1.00** / +3.15 | **1.00** / +1.89 | **0.82** / **+8.51** | 0.44 / **+4.36** | 12m 47s |
+| NVIDIA Nemotron 3 Super 120B | Cloud (OpenRouter) | **1.00** / +3.15 | **1.00** / +2.95 | 0.00 / +2.73 | 0.00 / -0.42 | 16m 5s |
 
 **Key findings:**
 - Easy/medium: ceiling effect — all capable cloud models score 1.00
-- Hard: score converges at 0.82; reward ranges **−0.93 → +6.39**, separating models that reason efficiently from those that don't
-- Very hard: all tested models score exactly **0.44** — the theoretical maximum without reading thread context (14 thread-critical posts × 0.04 penalty = 0.56 deduction from a perfect 1.00). No model reads threads proactively. Reward ranges +1.38 → +2.96, showing some differentiation in how models handle the non-thread posts.
+- Hard: score converges at 0.82; reward ranges **−0.93 → +8.51**, separating models that reason efficiently from those that don't
+- Very hard: capable cloud models score exactly **0.44** — the theoretical maximum without reading thread context (14 thread-critical posts × 0.04 penalty = 0.56 deduction from a perfect 1.00). No model reads threads proactively. Reward ranges **−0.42 → +4.36**, showing some differentiation in how models handle the non-thread posts.
 
 **Score alone is insufficient for evaluating frontier moderation agents.** The environment's reward shaping — and the very_hard tier's thread-context penalty — are what provide meaningful signal beyond binary accuracy.
 
