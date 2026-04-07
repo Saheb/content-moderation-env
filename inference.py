@@ -32,13 +32,17 @@ Examples:
 """
 
 import os
-import re
 import sys
 import json
 import time
 from typing import List, Optional
 
+import openai
+from openai import OpenAI, RateLimitError
+
 from openenv import GenericEnvClient
+from models import ModerationAction
+
 
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
@@ -51,9 +55,24 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
-import openai
-from openai import OpenAI, RateLimitError
-from models import ModerationAction
+
+
+def _connect_with_retry(client, max_attempts: int = 6) -> None:
+    """Attempt to connect to the env server with exponential backoff."""
+    for attempt in range(max_attempts):
+        try:
+            client.connect()
+            return
+        except Exception as e:
+            if attempt == max_attempts - 1:
+                raise
+            wait = min(2 ** attempt, 30)
+            print(
+                f"Env server not reachable (attempt {attempt + 1}/{max_attempts}): {e}. "
+                f"Retrying in {wait}s...",
+                file=sys.stderr,
+            )
+            time.sleep(wait)
 
 
 def main() -> None:
@@ -64,10 +83,10 @@ def main() -> None:
     # Optional: load environment variables from a .env file if available
     try:
         from dotenv import load_dotenv
-
         load_dotenv()
     except Exception:
         pass
+
     api_key = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
     base_url = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
     model = os.getenv("MODEL_NAME", "gpt-4o")
@@ -82,12 +101,19 @@ def main() -> None:
     env_client_base = os.getenv("ENV_CLIENT_BASE_URL", "http://localhost:8000")
     async_client = GenericEnvClient(base_url=env_client_base)
     client = async_client.sync()
-    
+
     global_start_time = time.time()
     final_summary = {}
 
-    for task in ["easy", "medium", "hard"]:
-        client.connect()
+    for task in ["easy", "medium", "hard", "very_hard"]:
+        try:
+            _connect_with_retry(client)
+        except Exception as e:
+            print(f"Failed to connect to env server for task '{task}': {e}", file=sys.stderr)
+            final_summary[task] = {"score": 0.0, "reward": 0.0, "success": False}
+            log_end(success=False, steps=0, score=0.0, rewards=[])
+            continue
+
         try:
             result = client.reset(task_name=task)
             total_reward = 0.0
@@ -101,12 +127,12 @@ def main() -> None:
                 if time.time() - global_start_time > 3600:
                     print(f"Global 60-minute timeout reached. Terminating {task} task early.", file=sys.stderr)
                     break
-                    
+
                 step += 1
                 obs = result.observation
                 active_post = obs.get("active_post_summary")
                 failed_attempts = obs.get("failed_attempts", [])
-                
+
                 # Weaker models get extremely confused by Pydantic JSON schemas because they start with "type": "object"
                 # Instead of schema draft syntax, give them a simple JSON template to fill out
                 schema_str = """{
@@ -132,23 +158,23 @@ To moderate the active pending post, output an action with:
   "rationale": the policy ID applied (e.g. "P4")"""
 
                 last_result = obs.get("last_action_result", "")
-                
+
                 prompt = f"Observation:\n- Active Post to Moderate: {json.dumps(active_post, indent=2)}"
                 if last_result:
                     prompt += f"\n- Environment Feedback: {last_result}"
-                
+
                 if failed_attempts:
                     prompt += f"\n  ⚠️ PAST FAILURES: You have already tried these decisions for this post: {failed_attempts}. They were INCORRECT. DO NOT use these decisions again."
-                    
+
                 prompt += f"\n\nDecide next moderation action.\nRespond ONLY with a JSON object matching this schema:\n{schema_str}"
 
                 print(prompt, file=sys.stderr)
-                
+
                 msg_list = [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
                 ]
-                
+
                 resp = None
                 max_retry_delay = (
                     300  # 5 minutes — beyond this likely means daily quota exhausted
@@ -198,7 +224,7 @@ To moderate the active pending post, output an action with:
                                     )
                             else:
                                 raise e
-                                
+
                         break  # Break retry loop on successful generation
                     except RateLimitError as e:
                         if attempt == 5:
@@ -246,7 +272,11 @@ To moderate the active pending post, output an action with:
                         raw = raw[start : end + 1]
 
                 # Pre-clean the JSON strings and filter out hallucinated extra keys
-                data = json.loads(raw)
+                try:
+                    data = json.loads(raw)
+                except (json.JSONDecodeError, ValueError) as e:
+                    print(f"Warning: Model output contains no parseable JSON: {raw!r} ({e})", file=sys.stderr)
+                    data = {}
 
                 # Sub-LLMs often hallucinate root wrappers (e.g. {"action": {...}} or {"actions": [{...}]})
                 if isinstance(data, dict) and len(data) == 1:
@@ -275,14 +305,19 @@ To moderate the active pending post, output an action with:
                     # Fallback to prevent crash, agent will receive negative reward
                     clean_data = {"type": "view_post", "post_id": "unknown"}
 
-                action = ModerationAction.model_validate(clean_data)
+                try:
+                    action = ModerationAction.model_validate(clean_data)
+                except Exception as e:
+                    print(f"Warning: Action validation failed ({e}), using fallback view_post", file=sys.stderr)
+                    action = ModerationAction.model_validate({"type": "view_post", "post_id": "unknown"})
+
                 try:
                     new_result = client.step(action)
                     error_msg = None
                 except Exception as e:
                     error_msg = str(e)
                     new_result = None
-                    
+
                 if new_result:
                     result = new_result
                     reward = result.reward or 0.0
@@ -290,10 +325,10 @@ To moderate the active pending post, output an action with:
                 else:
                     reward = 0.0
                     done = True
-                    
+
                 total_reward += reward
                 rewards.append(reward)
-                
+
                 action_str = json.dumps(clean_data).replace('"', "'")
                 log_step(step=step, action=action_str, reward=reward, done=done, error=error_msg)
 
@@ -316,10 +351,10 @@ To moderate the active pending post, output an action with:
             log_end(success=success, steps=step, score=score, rewards=rewards)
         finally:
             client.close()
-            
+
     total_time = time.time() - global_start_time
     mins, secs = divmod(total_time, 60)
-    
+
     print("\n" + "="*45, file=sys.stderr)
     print("FINAL RUN SUMMARY", file=sys.stderr)
     print("="*45, file=sys.stderr)
@@ -332,4 +367,10 @@ To moderate the active pending post, output an action with:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"Fatal error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e

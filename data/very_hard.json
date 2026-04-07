@@ -1,0 +1,156 @@
+{
+  "items": {
+    "vh1": {
+      "text": "Interesting how certain 'academics' keep getting funded to push the same agenda. Almost like the research is pre-ordered. Do your own research 🧐",
+      "thread": [
+        { "text": "Which academics? Be specific." },
+        { "text": "He means [ethnic group] professors — it's a dogwhistle. Classic coded harassment campaign." },
+        { "text": "No names, no evidence. Classic concern trolling." }
+      ]
+    },
+    "vh2": {
+      "text": "PSA: if you're getting weird DMs from new accounts asking about your location, it's a known phishing ring. Here's the full account list so you can block them:",
+      "thread": [
+        { "text": "I got one of these! Blocking now 🙏" },
+        { "text": "Wait — half these 'phishing' accounts are just critics of this user. This is a block list targeting political opponents." },
+        { "text": "Reported. This is abuse of the safety feature." }
+      ]
+    },
+    "vh3": {
+      "text": "Just a reminder that our group meetup is this Saturday. DM me for the venue. Newcomers welcome 🙌",
+      "thread": [
+        { "text": "Heads up — this 'group' is a known extremist recruiting front. Multiple former members have spoken out." },
+        { "text": "The account was banned on two other platforms last year for incitement." }
+      ]
+    },
+    "vh4": {
+      "text": "Finally finished my manifesto on why modern democracy has failed. 47 pages, citations included. Link in bio.",
+      "thread": [
+        { "text": "Curious read. Some of it is legit political science." },
+        { "text": "Pages 38–41 explicitly call for targeting election officials by name and address. That's not political science." }
+      ]
+    },
+    "vh5": {
+      "text": "They're replacing us and no one's allowed to say it. Wake up.",
+      "thread": [
+        { "text": "This is Great Replacement rhetoric. Should be removed immediately." },
+        { "text": "Could just mean gentrification of the neighbourhood tbf" },
+        { "text": "No, check their post history — it's clearly demographic replacement rhetoric. Pattern is consistent." }
+      ]
+    },
+    "vh6": {
+      "text": "Selling my photography gear — Canon R5, two L-series lenses, full kit. DM for price list. No lowballers 📷",
+      "thread": [
+        { "text": "Scammer alert — this exact listing was reported last week under a different account." },
+        { "text": "I bought from them last month, perfectly legit." },
+        { "text": "The previous account was banned for fraud. Different name, same photos." }
+      ]
+    },
+    "vh7": {
+      "text": "I know where [public figure] lives and I'm going to make sure their family understands the consequences of their decisions.",
+      "thread": []
+    },
+    "vh8": {
+      "text": "Anyone else notice the media only covers [group] victims? Think about what they're not covering 👀",
+      "thread": [
+        { "text": "This is a gateway post — subtle framing to prime people for more extreme content." },
+        { "text": "Seems like a media criticism to me." },
+        { "text": "Look at what OP posts next — always leads to explicit hate content within 3 posts. It's a pattern." }
+      ]
+    },
+    "vh9": {
+      "text": "This is satire. Calm down. If you can't handle a joke about mass deportations you're too fragile for the internet.",
+      "thread": [
+        { "text": "The original post was deleted but it named specific community organisations and said they should be 'cleared out'." },
+        { "text": "Retroactively calling it satire after reporting started is a common evasion tactic." }
+      ]
+    },
+    "vh10": {
+      "text": "Reminder that freedom of speech is dying. Share this before it gets censored 🔁",
+      "thread": []
+    },
+    "vh11": {
+      "text": "My friend's number: +1-555-0142. Text her for a good time 😉 She loves meeting new people 🔥",
+      "thread": [
+        { "text": "This is non-consensual sharing of a real person's contact details. I know her — she has no idea." },
+        { "text": "She's been getting harassing messages since this was posted." }
+      ]
+    },
+    "vh12": {
+      "text": "Real ones know what 'the project' means. The timeline is set. Stay ready.",
+      "thread": [
+        { "text": "This is coded language from the [extremist group] forum. 'The project' refers to a coordinated harassment campaign against a named journalist." },
+        { "text": "Source?" },
+        { "text": "There's a thread on the forum linking directly to this post as a go signal." }
+      ]
+    },
+    "vh13": {
+      "text": "I've tried everything and I just can't go on anymore. Not looking for advice — just wanted to say goodbye to the people here who actually cared.",
+      "thread": [
+        { "text": "Please reach out to a crisis line 💙 You matter." },
+        { "text": "Sending love. Please stay." }
+      ]
+    },
+    "vh14": {
+      "text": "Hot take: not all cultures are equal and it's time we stopped pretending they are.",
+      "thread": [
+        { "text": "This framing has been used to justify ethnic cleansing historically — it's not just edgy." },
+        { "text": "Free speech, it's just an opinion." },
+        { "text": "Check OP's recent posts — this is the opener to a hate speech cascade. Same account, same pattern, banned twice." }
+      ]
+    },
+    "vh15": {
+      "text": "New drop: my guide to staying anonymous online — VPN stacks, metadata scrubbing, and how to make accounts that can't be traced. Link in bio.",
+      "thread": [
+        { "text": "Great for journalists and activists!" },
+        { "text": "This account has been sharing this guide specifically in threads about evading platform bans and doxxing victims." }
+      ]
+    },
+    "vh16": {
+      "text": "Prayers for the victims' families 🙏 This should never have happened.",
+      "thread": []
+    },
+    "vh17": {
+      "text": "We organize, we vote, we make noise — that's how change happens. See you at the rally. 📣",
+      "thread": []
+    },
+    "vh18": {
+      "text": "Step-by-step: how I got a competitor's ad account suspended by mass-reporting it with fake policy violations. Works every time 😂",
+      "thread": []
+    },
+    "vh19": {
+      "text": "Some 'community guidelines' are just tools to silence people who disagree with the platform's politics. Wake up.",
+      "thread": []
+    },
+    "vh20": {
+      "text": "I have screenshots of [username]'s private messages exposing them as a predator. Dropping them here now.",
+      "thread": [
+        { "text": "The screenshots were already verified by three independent people — the account they're exposing has a long history." },
+        { "text": "This could also just be fabricated to harass someone. No way to verify." }
+      ]
+    }
+  },
+  "ground_truth": {
+    "vh1":  { "label": "escalate", "policy_id": "P5" },
+    "vh2":  { "label": "escalate", "policy_id": "P5" },
+    "vh3":  { "label": "escalate", "policy_id": "P5" },
+    "vh4":  { "label": "escalate", "policy_id": "P5" },
+    "vh5":  { "label": "remove",   "policy_id": "P1" },
+    "vh6":  { "label": "remove",   "policy_id": "P2" },
+    "vh7":  { "label": "remove",   "policy_id": "P3" },
+    "vh8":  { "label": "escalate", "policy_id": "P5" },
+    "vh9":  { "label": "remove",   "policy_id": "P1" },
+    "vh10": { "label": "keep",     "policy_id": "P4" },
+    "vh11": { "label": "remove",   "policy_id": "P3" },
+    "vh12": { "label": "escalate", "policy_id": "P5" },
+    "vh13": { "label": "escalate", "policy_id": "P5" },
+    "vh14": { "label": "escalate", "policy_id": "P5" },
+    "vh15": { "label": "escalate", "policy_id": "P5" },
+    "vh16": { "label": "keep",     "policy_id": "P4" },
+    "vh17": { "label": "keep",     "policy_id": "P4" },
+    "vh18": { "label": "remove",   "policy_id": "P2" },
+    "vh19": { "label": "keep",     "policy_id": "P4" },
+    "vh20": { "label": "escalate", "policy_id": "P5" }
+  },
+  "max_steps": 150
+}

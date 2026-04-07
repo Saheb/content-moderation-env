@@ -483,6 +483,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "openenv-core" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
     { name = "uvicorn" },
 ]
 
@@ -497,6 +498,7 @@ requires-dist = [
     { name = "openai", marker = "extra == 'baseline'", specifier = ">=1.0" },
     { name = "openenv-core", specifier = ">=0.2.0" },
     { name = "pydantic", specifier = ">=2.0" },
+    { name = "python-dotenv" },
     { name = "uvicorn" },
 ]
 provides-extras = ["baseline"]
