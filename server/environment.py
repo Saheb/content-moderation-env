@@ -1,7 +1,6 @@
 import uuid
 import json
 import os
-import time
 from typing import Dict, Any, Optional
 
 from openenv.core.env_server import Environment
@@ -25,6 +24,8 @@ class ContentModerationEnvironment(Environment):
         self.viewed_threads: set[str] = set()  # post_ids where view_thread was called
         self.step_count: int = 0
         self.action_history_counts: Dict[str, int] = {}
+        self.current_post_content: Optional[Dict[str, Any]] = None
+        self.current_thread_content: Optional[list] = None
 
         # Realistic VibeNet policy playbook
         self.policies: Dict[str, str] = {
@@ -36,7 +37,7 @@ class ContentModerationEnvironment(Environment):
         }
 
     def reset(self, seed: Optional[int] = None, episode_id: Optional[str] = None, **kwargs) -> ModerationObservation:
-        """Resets the environment for a new moderation task (easy, medium, or hard)."""
+        """Resets the environment for a new moderation task (easy, medium, hard, or very_hard)."""
         task_name = kwargs.get("task_name", "easy")
         self.episode_id = str(uuid.uuid4())
         self.task_name = task_name
@@ -46,6 +47,8 @@ class ContentModerationEnvironment(Environment):
         self.viewed_threads.clear()
         self.step_count = 0
         self.action_history_counts: Dict[str, int] = {}
+        self.current_post_content = None
+        self.current_thread_content = None
 
         # Load deterministic task pack
         data_path = os.path.join(os.path.dirname(__file__), "..", "data", f"{task_name}.json")
@@ -58,7 +61,9 @@ class ContentModerationEnvironment(Environment):
             active_post_summary=active_post,
             failed_attempts=self.post_failures.get(active_post["id"], []) if active_post else [],
             last_action_result="Episode started — VibeNet moderation pipeline ready",
-            metadata={"task": task_name, "total_posts": len(self.task_data["items"]) }
+            current_post=None,
+            thread_context=None,
+            metadata={"task": task_name, "total_posts": len(self.task_data["items"])}
         )
 
     def step(self, action: ModerationAction, timeout_s: Optional[float] = None, **kwargs) -> ModerationObservation:
@@ -67,19 +72,25 @@ class ContentModerationEnvironment(Environment):
         reward: float = 0.0
         result: str = ""
         
-        # Track loop count by post_id
+        # Track loop count for moderate actions to detect infinite loops
+        action_key: str | None = None
         if action.type == "moderate" and action.post_id and action.decision:
             action_key = f"{action.post_id}_{action.decision}_{action.rationale}"
-            self.action_history_counts[action_key] = getattr(self, "action_history_counts", {}).get(action_key, 0) + 1
+            self.action_history_counts[action_key] = self.action_history_counts.get(action_key, 0) + 1
 
         if action.type == "view_post":
             reward += 0.08
+            if action.post_id and self.task_data and action.post_id in self.task_data["items"]:
+                post = self.task_data["items"][action.post_id]
+                self.current_post_content = {"id": action.post_id, "text": post["text"]}
             result = f"Post {action.post_id} loaded"
 
         elif action.type == "view_thread":
             reward += 0.12
             if action.post_id:
                 self.viewed_threads.add(action.post_id)
+            if action.post_id and self.task_data and action.post_id in self.task_data["items"]:
+                self.current_thread_content = self.task_data["items"][action.post_id].get("thread", [])
             result = f"Thread context for {action.post_id} loaded"
 
         elif action.type == "categorize":
@@ -98,6 +109,8 @@ class ContentModerationEnvironment(Environment):
                     reward += 0.45
                     self.moderated.add(action.post_id)
                     self.decisions[action.post_id] = action.decision
+                    self.current_post_content = None
+                    self.current_thread_content = None
                     result = "Correct moderation decision"
                     # Bonus for policy-linked rationale
                     if action.rationale and gt.get("policy_id") in (action.rationale or ""):
@@ -135,10 +148,9 @@ class ContentModerationEnvironment(Environment):
         # Apply loop penalty based on task difficulty level
         limit = {"easy": 3, "medium": 4, "hard": 5, "very_hard": 5}.get(self.task_name, 3)
         loop_exceeded = False
-        
-        if action.type == "moderate" and action.post_id and action.decision:
-            action_key = f"{action.post_id}_{action.decision}_{action.rationale}"
-            count = getattr(self, "action_history_counts", {}).get(action_key, 0)
+
+        if action_key is not None:
+            count = self.action_history_counts.get(action_key, 0)
             if count >= limit:
                 reward -= 5.0
                 result = f"Infinite loop detected: Model repeated the exact same decision for post {action.post_id} {count} times. Heavy penalty applied."
@@ -155,6 +167,8 @@ class ContentModerationEnvironment(Environment):
             active_post_summary=active_post,
             failed_attempts=self.post_failures.get(active_post["id"], []) if active_post else [],
             last_action_result=result,
+            current_post=self.current_post_content,
+            thread_context=self.current_thread_content,
             grader_score=grader,
             reward=reward,
             done=done,

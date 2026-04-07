@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VibeNet Moderation Desk</title>
+  <style>
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --surface2:  #222536;
+      --border:    #2e3147;
+      --text:      #e2e8f0;
+      --muted:     #8892a4;
+      --accent:    #6366f1;
+      --easy:      #22c55e;
+      --medium:    #f59e0b;
+      --hard:      #ef4444;
+      --reward-pos:#34d399;
+      --reward-neg:#f87171;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── Landing ─────────────────────────────────── */
+    #landing {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      text-align: center;
+      gap: 1.5rem;
+    }
+    #landing h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; }
+    #landing p  { color: var(--muted); max-width: 480px; line-height: 1.6; }
+    .task-grid {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+    .task-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.5rem;
+      cursor: pointer;
+      color: var(--text);
+      text-align: left;
+      width: 180px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .task-btn:hover { background: var(--surface2); border-color: var(--accent); }
+    .task-btn .task-label { font-weight: 700; font-size: 1rem; margin-bottom: 0.25rem; }
+    .task-btn .task-meta  { color: var(--muted); font-size: 0.78rem; }
+    .task-btn.easy      .task-label { color: var(--easy); }
+    .task-btn.medium    .task-label { color: var(--medium); }
+    .task-btn.hard      .task-label { color: var(--hard); }
+    .task-btn.very-hard .task-label { color: #a78bfa; }
+    .api-note {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .api-note a { color: var(--accent); text-decoration: none; }
+
+    /* ── Game layout ─────────────────────────────── */
+    #game { display: flex; flex-direction: column; height: 100vh; }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1.25rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .brand { font-weight: 700; font-size: 1rem; letter-spacing: -0.01em; }
+    .stats {
+      display: flex;
+      gap: 1.25rem;
+      font-size: 0.82rem;
+    }
+    .stat { color: var(--muted); }
+    .stat span { color: var(--text); font-weight: 600; }
+    #stat-reward span { transition: color 0.3s; }
+    .reward-flash-pos { color: var(--reward-pos) !important; }
+    .reward-flash-neg { color: var(--reward-neg) !important; }
+    .btn-quit {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.78rem;
+    }
+    .btn-quit:hover { border-color: var(--hard); color: var(--hard); }
+
+    .game-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Left panel ──────────────────────────────── */
+    .left-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 1.25rem;
+      gap: 1rem;
+      border-right: 1px solid var(--border);
+    }
+
+    .post-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .post-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .post-id {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .failed-badge {
+      font-size: 0.75rem;
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.35);
+      border-radius: 4px;
+      padding: 0.15em 0.5em;
+      color: var(--reward-neg);
+    }
+    .post-preview {
+      color: var(--muted);
+      font-style: italic;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    .post-full {
+      color: var(--text);
+      line-height: 1.6;
+      border-left: 3px solid var(--accent);
+      padding-left: 0.75rem;
+    }
+    .thread-section { display: flex; flex-direction: column; gap: 0.4rem; }
+    .thread-header {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .thread-reply {
+      background: var(--surface2);
+      border-left: 2px solid var(--border);
+      padding: 0.4rem 0.65rem;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.85rem;
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .thread-empty { color: var(--muted); font-size: 0.82rem; font-style: italic; }
+    .post-action-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .btn-action {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      cursor: pointer;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.8rem;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .btn-action:hover:not(:disabled) { border-color: var(--accent); background: var(--surface); }
+    .btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
+    .feedback-bar {
+      font-size: 0.82rem;
+      color: var(--muted);
+      min-height: 1.2em;
+      line-height: 1.4;
+      transition: color 0.3s;
+    }
+    .feedback-bar.pos { color: var(--reward-pos); }
+    .feedback-bar.neg { color: var(--reward-neg); }
+
+    /* ── Decision panel ──────────────────────────── */
+    .decision-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .decision-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .decision-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .btn-decision {
+      padding: 0.45rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: 2px solid transparent;
+      transition: all 0.15s;
+      background: var(--surface2);
+      color: var(--text);
+    }
+    .btn-decision:hover:not(:disabled) { border-color: var(--accent); }
+    .btn-decision.selected { border-color: var(--accent); background: rgba(99,102,241,0.15); }
+    .btn-decision[data-d="keep"]     { color: var(--easy); }
+    .btn-decision[data-d="warn"]     { color: var(--medium); }
+    .btn-decision[data-d="remove"]   { color: var(--hard); }
+    .btn-decision[data-d="escalate"] { color: #818cf8; }
+    .btn-decision:disabled { opacity: 0.35; cursor: not-allowed; }
+    .policy-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .policy-row label { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
+    .policy-row select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 0.3rem 0.5rem;
+      font-size: 0.82rem;
+      flex: 1;
+    }
+    .btn-submit {
+      background: var(--accent);
+      border: none;
+      border-radius: 7px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 0.55rem 1.25rem;
+      align-self: flex-start;
+      transition: opacity 0.15s;
+    }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-submit:hover:not(:disabled) { opacity: 0.85; }
+
+    /* ── Right panel ─────────────────────────────── */
+    .right-panel {
+      width: 280px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 1.25rem;
+      gap: 1rem;
+    }
+
+    .policy-ref {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    .panel-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 0.65rem;
+    }
+    .policy-item {
+      display: flex;
+      gap: 0.5rem;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      padding: 0.3rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .policy-item:last-child { border-bottom: none; }
+    .policy-id {
+      font-weight: 700;
+      font-size: 0.72rem;
+      min-width: 22px;
+      padding-top: 0.1em;
+    }
+    .p1 .policy-id { color: var(--hard); }
+    .p2 .policy-id { color: var(--medium); }
+    .p3 .policy-id { color: #fb923c; }
+    .p4 .policy-id { color: var(--easy); }
+    .p5 .policy-id { color: #818cf8; }
+    .policy-text { color: var(--muted); }
+
+    .step-log {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      flex: 1;
+      overflow-y: auto;
+    }
+    #log-entries {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+    }
+    .log-entry {
+      background: var(--surface2);
+      border-radius: 5px;
+      padding: 0.3rem 0.5rem;
+      font-size: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .log-action { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .log-rwd { font-weight: 600; white-space: nowrap; }
+    .log-rwd.pos { color: var(--reward-pos); }
+    .log-rwd.neg { color: var(--reward-neg); }
+
+    /* ── End screen ──────────────────────────────── */
+    #end-screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,17,23,0.88);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+    .end-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem 2.5rem;
+      text-align: center;
+      max-width: 380px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .end-title { font-size: 1.5rem; font-weight: 700; }
+    .end-score { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.04em; }
+    .end-meta  { color: var(--muted); font-size: 0.85rem; }
+    .end-meta strong { color: var(--text); }
+    .btn-play-again {
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.65rem 1.5rem;
+      margin-top: 0.5rem;
+    }
+    .btn-play-again:hover { opacity: 0.85; }
+
+    /* ── Reward pop ──────────────────────────────── */
+    .reward-pop {
+      position: fixed;
+      font-size: 1.1rem;
+      font-weight: 800;
+      pointer-events: none;
+      animation: popUp 0.9s ease-out forwards;
+      z-index: 200;
+    }
+    @keyframes popUp {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-60px) scale(1.2); }
+    }
+
+    /* ── Utility ─────────────────────────────────── */
+    [hidden] { display: none !important; }
+    .error-toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--hard);
+      color: #fff;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      z-index: 300;
+      animation: fadeOut 3s ease-out forwards;
+    }
+    @keyframes fadeOut {
+      0%, 70% { opacity: 1; }
+      100%     { opacity: 0; pointer-events: none; }
+    }
+
+    @media (max-width: 640px) {
+      .right-panel { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Landing ───────────────────────────────────────────────────────────── -->
+<div id="landing">
+  <div style="font-size:2.5rem">🛡️</div>
+  <h1>VibeNet Moderation Desk</h1>
+  <p>Step into the role of a trust &amp; safety analyst. Review posts, check thread context, apply policies, and issue moderation decisions — just like an AI agent would.</p>
+
+  <div class="task-grid">
+    <button class="task-btn easy" onclick="startSession('easy')">
+      <div class="task-label">Easy</div>
+      <div class="task-meta">5 posts · 20 steps<br>Unambiguous cases</div>
+    </button>
+    <button class="task-btn medium" onclick="startSession('medium')">
+      <div class="task-label">Medium</div>
+      <div class="task-meta">10 posts · 50 steps<br>Policy ambiguity</div>
+    </button>
+    <button class="task-btn hard" onclick="startSession('hard')">
+      <div class="task-label">Hard</div>
+      <div class="task-meta">18 posts · 100 steps<br>Thread context required</div>
+    </button>
+    <button class="task-btn very-hard" onclick="startSession('very_hard')">
+      <div class="task-label">Very Hard</div>
+      <div class="task-meta">20 posts · 150 steps<br>Context inversion</div>
+    </button>
+  </div>
+
+  <p class="api-note">
+    OpenEnv API: <a href="/docs" target="_blank">/docs</a> ·
+    Benchmark: <a href="/benchmark.html" target="_blank">benchmark.html</a>
+  </p>
+</div>
+
+<!-- ── Game ──────────────────────────────────────────────────────────────── -->
+<div id="game" hidden>
+  <header>
+    <div class="brand">🛡️ VibeNet Moderation Desk</div>
+    <div class="stats">
+      <div class="stat" id="stat-posts">Posts: <span>0/0</span></div>
+      <div class="stat" id="stat-steps">Steps: <span>0</span></div>
+      <div class="stat" id="stat-reward">Reward: <span>+0.00</span></div>
+    </div>
+    <button class="btn-quit" onclick="goToLanding()">✕ Quit</button>
+  </header>
+
+  <div class="game-body">
+    <!-- Left panel -->
+    <div class="left-panel">
+
+      <!-- Post card -->
+      <div class="post-card">
+        <div class="post-header">
+          <span class="post-id" id="post-id">Post #—</span>
+          <span class="failed-badge" id="failed-badge" hidden>
+            ✗ Tried: <span id="failed-list"></span>
+          </span>
+        </div>
+
+        <div class="post-preview" id="post-preview">Loading…</div>
+        <div class="post-full" id="post-full" hidden></div>
+
+        <div class="thread-section" id="thread-section" hidden>
+          <div class="thread-header">Thread replies</div>
+          <div id="thread-replies"></div>
+        </div>
+
+        <div class="post-action-row">
+          <button class="btn-action" id="btn-view-post"   onclick="doViewPost()">🔍 View Full Post (+0.08)</button>
+          <button class="btn-action" id="btn-view-thread" onclick="doViewThread()">🧵 View Thread (+0.12)</button>
+          <button class="btn-action" onclick="doLookupPolicy()">📖 Lookup Policy (+0.10)</button>
+        </div>
+
+        <div class="feedback-bar" id="feedback"></div>
+      </div>
+
+      <!-- Decision panel -->
+      <div class="decision-panel">
+        <div class="decision-label">Your decision</div>
+
+        <div class="decision-buttons">
+          <button class="btn-decision" data-d="keep"     onclick="selectDecision('keep')">Keep</button>
+          <button class="btn-decision" data-d="warn"     onclick="selectDecision('warn')">Warn</button>
+          <button class="btn-decision" data-d="remove"   onclick="selectDecision('remove')">Remove</button>
+          <button class="btn-decision" data-d="escalate" onclick="selectDecision('escalate')">Escalate</button>
+        </div>
+
+        <div class="policy-row">
+          <label for="policy-select">Rationale:</label>
+          <select id="policy-select">
+            <option value="P1">P1 — Hate speech</option>
+            <option value="P2">P2 — Spam / Scam</option>
+            <option value="P3">P3 — Doxxing</option>
+            <option value="P4" selected>P4 — Opinion / Edgy</option>
+            <option value="P5">P5 — Violence / Harm</option>
+          </select>
+        </div>
+
+        <button class="btn-submit" id="btn-submit" onclick="doModerate()" disabled>
+          Submit Moderation →
+        </button>
+      </div>
+
+    </div><!-- /left-panel -->
+
+    <!-- Right panel -->
+    <div class="right-panel">
+
+      <div class="policy-ref">
+        <div class="panel-title">Policy Reference</div>
+        <div class="policy-item p1"><span class="policy-id">P1</span><span class="policy-text">Hate speech or targeted harassment → <strong>remove</strong></span></div>
+        <div class="policy-item p2"><span class="policy-id">P2</span><span class="policy-text">Spam, scams, solicitation → <strong>remove</strong></span></div>
+        <div class="policy-item p3"><span class="policy-id">P3</span><span class="policy-text">Doxxing or private info → <strong>remove</strong></span></div>
+        <div class="policy-item p4"><span class="policy-id">P4</span><span class="policy-text">Edgy humor, opinions → <strong>keep</strong> (opt. warn)</span></div>
+        <div class="policy-item p5"><span class="policy-id">P5</span><span class="policy-text">Inciting violence / harm → <strong>escalate</strong></span></div>
+      </div>
+
+      <div class="step-log">
+        <div class="panel-title">Step Log</div>
+        <div id="log-entries"></div>
+      </div>
+
+    </div><!-- /right-panel -->
+  </div><!-- /game-body -->
+</div><!-- /game -->
+
+<!-- ── End screen ─────────────────────────────────────────────────────────── -->
+<div id="end-screen" hidden>
+  <div class="end-card">
+    <div class="end-title" id="end-title">Session Complete</div>
+    <div class="end-score" id="end-score">—</div>
+    <div class="end-meta" id="end-meta"></div>
+    <button class="btn-play-again" onclick="goToLanding()">Play Again</button>
+  </div>
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────────────────────
+  let sessionId      = null;
+  let currentPostId  = null;
+  let selectedDec    = null;
+  let stepCount      = 0;
+  let totalReward    = 0;
+  let totalPosts     = 0;
+  let taskName       = 'easy';
+
+  // ── API helpers ───────────────────────────────────────────────────────────
+  async function apiFetch(url, method, body) {
+    const opts = { method, headers: {} };
+    if (body) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    const res = await fetch(url, opts);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || res.statusText);
+    }
+    return res.json();
+  }
+
+  function showError(msg) {
+    const el = document.createElement('div');
+    el.className = 'error-toast';
+    el.textContent = '⚠ ' + msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  // ── Session ───────────────────────────────────────────────────────────────
+  async function startSession(task) {
+    taskName = task;
+    try {
+      const data = await apiFetch('/demo/reset?task=' + task, 'POST', null);
+      sessionId     = data.session_id;
+      stepCount     = 0;
+      totalReward   = 0;
+      selectedDec   = null;
+      currentPostId = null;
+      totalPosts    = data.observation.metadata?.total_posts || 0;
+
+      document.getElementById('log-entries').innerHTML = '';
+      document.getElementById('landing').hidden    = true;
+      document.getElementById('game').hidden       = false;
+      document.getElementById('end-screen').hidden = true;
+
+      renderObs(data.observation, null);
+    } catch (e) {
+      showError('Could not start session: ' + e.message);
+    }
+  }
+
+  function goToLanding() {
+    sessionId = null;
+    document.getElementById('landing').hidden    = false;
+    document.getElementById('game').hidden       = true;
+    document.getElementById('end-screen').hidden = true;
+  }
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  async function sendAction(action) {
+    if (!sessionId) return;
+    try {
+      const data = await apiFetch('/demo/step/' + sessionId, 'POST', action);
+      const obs   = data.observation;
+      const rwd   = obs.reward ?? 0;
+      totalReward = Math.round((totalReward + rwd) * 1000) / 1000;
+      stepCount++;
+      flashReward(rwd);
+      addLog(action, rwd);
+      renderObs(obs, action);
+      if (obs.done) showEndScreen(obs);
+    } catch (e) {
+      showError(e.message);
+    }
+  }
+
+  function doViewPost()   { sendAction({ type: 'view_post',   post_id: currentPostId }); }
+  function doViewThread() { sendAction({ type: 'view_thread', post_id: currentPostId }); }
+  function doLookupPolicy() {
+    const pid = document.getElementById('policy-select').value;
+    sendAction({ type: 'lookup_policy', policy_id: pid });
+  }
+  function doModerate() {
+    if (!selectedDec) return;
+    const pid = document.getElementById('policy-select').value;
+    sendAction({ type: 'moderate', post_id: currentPostId, decision: selectedDec, rationale: pid });
+    selectedDec = null;
+    document.querySelectorAll('.btn-decision').forEach(b => b.classList.remove('selected'));
+    document.getElementById('btn-submit').disabled = true;
+  }
+
+  function selectDecision(d) {
+    const failed = Array.from(document.querySelectorAll('.btn-decision'))
+      .filter(b => b.disabled)
+      .map(b => b.dataset.d);
+    if (failed.includes(d)) return;
+    selectedDec = d;
+    document.querySelectorAll('.btn-decision').forEach(b => {
+      b.classList.toggle('selected', b.dataset.d === d);
+    });
+    document.getElementById('btn-submit').disabled = false;
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  function renderObs(obs, lastAction) {
+    const postSummary = obs.active_post_summary;
+    const newPostId   = postSummary?.id ?? null;
+
+    // Detect post change → reset view state
+    if (newPostId !== currentPostId) {
+      currentPostId = newPostId;
+      document.getElementById('post-full').hidden    = true;
+      document.getElementById('thread-section').hidden = true;
+      document.getElementById('btn-view-post').disabled   = false;
+      document.getElementById('btn-view-thread').disabled = false;
+      selectedDec = null;
+      document.querySelectorAll('.btn-decision').forEach(b => {
+        b.classList.remove('selected');
+        b.disabled = false;
+      });
+      document.getElementById('btn-submit').disabled = true;
+    }
+
+    // Post summary
+    document.getElementById('post-id').textContent      = 'Post #' + (newPostId || '—');
+    document.getElementById('post-preview').textContent = postSummary?.preview || '—';
+
+    // Full post content
+    if (obs.current_post) {
+      const el = document.getElementById('post-full');
+      el.textContent = obs.current_post.text;
+      el.hidden = false;
+      document.getElementById('btn-view-post').disabled = true;
+    }
+
+    // Thread context
+    if (obs.thread_context) {
+      const replies = obs.thread_context;
+      const container = document.getElementById('thread-replies');
+      container.innerHTML = replies.length
+        ? replies.map(r => `<div class="thread-reply">${esc(r.text)}</div>`).join('')
+        : '<div class="thread-empty">No replies in this thread.</div>';
+      document.getElementById('thread-section').hidden = false;
+      document.getElementById('btn-view-thread').disabled = true;
+    }
+
+    // Failed attempts
+    const failed = obs.failed_attempts || [];
+    document.getElementById('failed-badge').hidden = failed.length === 0;
+    document.getElementById('failed-list').textContent = failed.join(', ');
+    document.querySelectorAll('.btn-decision').forEach(b => {
+      const isNew = newPostId !== currentPostId;
+      b.disabled = failed.includes(b.dataset.d);
+      if (b.disabled) b.classList.remove('selected');
+    });
+
+    // Feedback
+    const fb = document.getElementById('feedback');
+    fb.textContent = obs.last_action_result || '';
+    const rwd = obs.reward ?? 0;
+    fb.className = 'feedback-bar' + (rwd > 0 ? ' pos' : rwd < 0 ? ' neg' : '');
+
+    // Stats
+    const moderated = obs.metadata?.moderated ?? 0;
+    document.querySelector('#stat-posts span').textContent = moderated + '/' + totalPosts;
+    document.querySelector('#stat-steps span').textContent = stepCount;
+    const rwdEl = document.querySelector('#stat-reward span');
+    rwdEl.textContent = (totalReward >= 0 ? '+' : '') + totalReward.toFixed(2);
+  }
+
+  function showEndScreen(obs) {
+    const score   = obs.grader_score ?? 0;
+    const success = score >= 0.8;
+    document.getElementById('end-title').textContent = success ? '🎉 Shift Complete' : '📋 Shift Over';
+    const scoreEl = document.getElementById('end-score');
+    scoreEl.textContent = (score * 100).toFixed(0) + '%';
+    scoreEl.style.color = success ? 'var(--easy)' : score >= 0.5 ? 'var(--medium)' : 'var(--hard)';
+    document.getElementById('end-meta').innerHTML =
+      `Accuracy score: <strong>${score.toFixed(2)}</strong><br>` +
+      `Total reward: <strong>${(totalReward >= 0 ? '+' : '') + totalReward.toFixed(2)}</strong><br>` +
+      `Steps taken: <strong>${stepCount}</strong>`;
+    document.getElementById('end-screen').hidden = false;
+  }
+
+  // ── Step log ──────────────────────────────────────────────────────────────
+  function addLog(action, rwd) {
+    const container = document.getElementById('log-entries');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    const label = action.type === 'moderate'
+      ? `moderate → ${action.decision} (${action.rationale})`
+      : action.type + (action.post_id ? ` ${action.post_id}` : '') + (action.policy_id ? ` ${action.policy_id}` : '');
+    entry.innerHTML =
+      `<span class="log-action">${stepCount}. ${esc(label)}</span>` +
+      `<span class="log-rwd ${rwd >= 0 ? 'pos' : 'neg'}">${rwd >= 0 ? '+' : ''}${rwd.toFixed(2)}</span>`;
+    container.prepend(entry);
+  }
+
+  // ── Reward pop animation ──────────────────────────────────────────────────
+  function flashReward(rwd) {
+    if (rwd === 0) return;
+    const el = document.createElement('div');
+    el.className = 'reward-pop';
+    el.textContent = (rwd > 0 ? '+' : '') + rwd.toFixed(2);
+    el.style.color = rwd > 0 ? 'var(--reward-pos)' : 'var(--reward-neg)';
+    // Position near the stats bar
+    const statEl = document.getElementById('stat-reward');
+    const rect   = statEl.getBoundingClientRect();
+    el.style.left = rect.left + 'px';
+    el.style.top  = (rect.top + window.scrollY) + 'px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 950);
+  }
+
+  // ── Utils ─────────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
