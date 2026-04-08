@@ -63,6 +63,8 @@ This makes it a useful benchmark environment for evaluating **policy-grounded re
 | Qwen 3 32B | Cloud (Groq) | **1.00** / +3.15 | **1.00** / +1.89 | **0.82** / **+8.51** | 0.44 / **+4.36** | 12m 47s |
 | NVIDIA Nemotron 3 Super 120B | Cloud (OpenRouter) | **1.00** / +3.15 | **1.00** / +2.95 | 0.00 / +2.73 | 0.00 / -0.42 | 16m 5s |
 
+> Scores are clamped to (0.01, 0.99) for validator compliance; values in the table reflect raw grader accuracy before clamping.
+
 **Key findings:**
 - Easy/medium: ceiling effect — all capable cloud models score 1.00
 - Hard: score converges at 0.82; reward ranges **−0.93 → +8.51**, separating models that reason efficiently from those that don't
@@ -235,7 +237,7 @@ uvicorn server.app:app --reload --port 8000
 
 ```bash
 # Run the baseline inference script
-export API_KEY=your-key
+export HF_TOKEN=your-key
 export API_BASE_URL=https://api.groq.com/openai/v1
 export MODEL_NAME=llama-3.3-70b-versatile
 python inference.py
@@ -245,24 +247,22 @@ python inference.py
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `API_KEY` | preferred | API key, required by the hackathon validator |
-| `API_BASE_URL` | `https://api.openai.com/v1` | LLM provider endpoint, required by the hackathon validator |
-| `MODEL_NAME` | `gpt-4o-mini` | Model identifier |
-| `ENV_CLIENT_BASE_URL` | `http://localhost:8000` | Environment server URL |
-
-`inference.py` reads `API_KEY` and `API_BASE_URL` only. To opt into loading those values from a local `.env` during development, set `LOAD_DOTENV=1` before running it.
+| `HF_TOKEN` | *(required)* | API key — injected automatically by the hackathon validator |
+| `API_BASE_URL` | `https://router.huggingface.co/v1` | LLM provider endpoint |
+| `MODEL_NAME` | `Qwen/Qwen2.5-72B-Instruct` | Model identifier |
+| `ENV_BASE_URL` / `ENV_CLIENT_BASE_URL` | `http://localhost:8000` | Environment server URL |
 
 ```bash
 # Groq
-export API_KEY=gsk_... && export API_BASE_URL=https://api.groq.com/openai/v1
+export HF_TOKEN=gsk_... && export API_BASE_URL=https://api.groq.com/openai/v1
 export MODEL_NAME=llama-3.3-70b-versatile && python inference.py
 
 # Google Gemini
-export API_KEY=AIza... && export API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+export HF_TOKEN=AIza... && export API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 export MODEL_NAME=gemini-2.0-flash && python inference.py
 
 # Local Ollama
-export API_KEY=ollama && export API_BASE_URL=http://localhost:11434/v1
+export HF_TOKEN=ollama && export API_BASE_URL=http://localhost:11434/v1
 export MODEL_NAME=llama3 && python inference.py
 ```
 
@@ -271,11 +271,11 @@ export MODEL_NAME=llama3 && python inference.py
 **Live Space:** [huggingface.co/spaces/saheb/content-moderation-env](https://huggingface.co/spaces/saheb/content-moderation-env)
 **Interactive demo:** [huggingface.co/spaces/saheb/content-moderation-env/demo](https://huggingface.co/spaces/saheb/content-moderation-env/demo) — play through the environment as a human agent.
 
-The root `Dockerfile` targets port 7860 (HF Spaces default):
+The server listens on port 8000 (`app_port: 8000` in the README YAML tells HF Spaces to route traffic there):
 
 ```bash
 docker build -t content-moderation-env .
-docker run -p 7860:7860 content-moderation-env
+docker run -p 8000:8000 content-moderation-env
 ```
 
 To deploy your own: create a Docker-based Space on [huggingface.co/new-space](https://huggingface.co/new-space) and link this repository.
@@ -304,7 +304,7 @@ content-moderation-env/
 
 ## Novel mechanics
 
-**Thread-context inversion as a grader penalty** — Unlike most environments where reading context only unlocks reward signals, here skipping context on ambiguous posts actively reduces the final grader score. This forces agents to develop a genuine strategy for when to read context vs. when post text alone is sufficient.
+**Thread-context inversion as a grader penalty** — Unlike most environments where reading context only unlocks reward signals, here skipping context on ambiguous posts actively reduces the final grader score. This forces agents to develop a genuine strategy for when to read context vs. when post text alone is sufficient. The set of context-critical posts and the per-post penalty are defined in each task's JSON file (`context_critical_posts`), keeping grading logic fully data-driven and reproducible without touching server code.
 
 **Over-censorship is distinctly penalized** — Removing a post that should be kept carries a −0.90 net reward (−0.35 incorrect + −0.55 over-censorship), which is worse than any other single error. This mirrors real-world trust & safety constraints where false positives damage user trust as much as false negatives damage platform safety.
 
