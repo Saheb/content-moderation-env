@@ -3,30 +3,31 @@
 Supports any OpenAI-compatible API (OpenAI, Gemini, Groq, Together, Ollama, etc.)
 via environment variables:
 
-    HF_TOKEN         — Hugging Face / API key
-    API_BASE_URL     — Base URL (default: https://api.openai.com/v1)
-    MODEL_NAME       — Model name (default: gpt-4o)
+    API_KEY          — Preferred API key (required by the hackathon validator)
+    API_BASE_URL     — Preferred base URL (required by the hackathon validator)
+    HF_TOKEN         — Optional local-development fallback API key
+    MODEL_NAME       — Model name (default: gpt-4o-mini)
 
 Examples:
     # OpenAI (default)
-    export HF_TOKEN=sk-...
+    export API_KEY=sk-...
     python inference.py
 
     # Google Gemini
-    export HF_TOKEN=AIza...
+    export API_KEY=AIza...
     export API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
     export MODEL_NAME=gemini-2.0-flash
     python inference.py
 
     # Groq
-    export HF_TOKEN=gsk_...
+    export API_KEY=gsk_...
     export API_BASE_URL=https://api.groq.com/openai/v1
     export MODEL_NAME=llama-3.3-70b-versatile
     python inference.py
 
     # Local Ollama
+    export API_KEY=ollama
     export API_BASE_URL=http://localhost:11434/v1
-    export HF_TOKEN=ollama
     export MODEL_NAME=llama3
     python inference.py
 """
@@ -75,6 +76,43 @@ def _connect_with_retry(client, max_attempts: int = 6) -> None:
             time.sleep(wait)
 
 
+def _resolve_llm_config() -> tuple[str, str, str]:
+    """Resolve LLM client configuration, prioritizing the validator contract.
+
+    If either API_KEY or API_BASE_URL is present, require both so we never
+    silently fall back to a different provider during submission validation.
+    """
+    api_key = os.getenv("API_KEY")
+    base_url = os.getenv("API_BASE_URL")
+
+    if api_key or base_url:
+        missing = []
+        if not api_key:
+            missing.append("API_KEY")
+        if not base_url:
+            missing.append("API_BASE_URL")
+        if missing:
+            raise SystemExit(
+                "Missing required validator environment variable(s): "
+                + ", ".join(missing)
+                + ". When using the hackathon LiteLLM proxy, initialize the OpenAI client with "
+                + "api_key=os.environ['API_KEY'] and base_url=os.environ['API_BASE_URL']."
+            )
+        source = "API_KEY/API_BASE_URL"
+    else:
+        api_key = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
+        base_url = "https://api.openai.com/v1"
+        source = "HF_TOKEN/OPENAI_API_KEY fallback"
+        if not api_key:
+            raise SystemExit(
+                "Set API_KEY and API_BASE_URL, or provide a local-development fallback via HF_TOKEN."
+            )
+
+    model = os.getenv("MODEL_NAME") or "gpt-4o-mini"
+    print(f"Resolved LLM config via {source}", file=sys.stderr)
+    return api_key, base_url, model
+
+
 def main() -> None:
     """
     Main entry point for running the content moderation agent.
@@ -87,12 +125,7 @@ def main() -> None:
     except Exception:
         pass
 
-    api_key = os.getenv("API_KEY") or os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
-    base_url = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-    model = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
-
-    if not api_key:
-        raise SystemExit("Set API_KEY or HF_TOKEN environment variable")
+    api_key, base_url, model = _resolve_llm_config()
 
     openai_client = OpenAI(api_key=api_key, base_url=base_url)
     print(f"Using model={model} via {base_url}", file=sys.stderr)

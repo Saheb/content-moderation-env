@@ -232,7 +232,7 @@ uvicorn server.app:app --reload --port 8000
 
 ```bash
 # Run the baseline inference script
-export HF_TOKEN=your-key
+export API_KEY=your-key
 export API_BASE_URL=https://api.groq.com/openai/v1
 export MODEL_NAME=llama-3.3-70b-versatile
 python inference.py
@@ -242,22 +242,23 @@ python inference.py
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `HF_TOKEN` | falls back to `OPENAI_API_KEY` | API key |
-| `API_BASE_URL` | `https://api.openai.com/v1` | LLM provider endpoint |
-| `MODEL_NAME` | `gpt-4o` | Model identifier |
+| `API_KEY` | preferred | API key, required by the hackathon validator |
+| `API_BASE_URL` | `https://api.openai.com/v1` | LLM provider endpoint, required by the hackathon validator |
+| `HF_TOKEN` | local fallback | Optional API key fallback for local development |
+| `MODEL_NAME` | `gpt-4o-mini` | Model identifier |
 | `ENV_CLIENT_BASE_URL` | `http://localhost:8000` | Environment server URL |
 
 ```bash
 # Groq
-export HF_TOKEN=gsk_... && export API_BASE_URL=https://api.groq.com/openai/v1
+export API_KEY=gsk_... && export API_BASE_URL=https://api.groq.com/openai/v1
 export MODEL_NAME=llama-3.3-70b-versatile && python inference.py
 
 # Google Gemini
-export HF_TOKEN=AIza... && export API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+export API_KEY=AIza... && export API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 export MODEL_NAME=gemini-2.0-flash && python inference.py
 
 # Local Ollama
-export API_BASE_URL=http://localhost:11434/v1 && export HF_TOKEN=ollama
+export API_KEY=ollama && export API_BASE_URL=http://localhost:11434/v1
 export MODEL_NAME=llama3 && python inference.py
 ```
 
