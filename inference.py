@@ -76,25 +76,16 @@ def _connect_with_retry(client, max_attempts: int = 6) -> None:
 
 
 def _resolve_llm_config() -> tuple[str, str, str]:
-    """Resolve LLM client configuration using the validator contract only."""
-    api_key = os.environ.get("API_KEY")
-    base_url = os.environ.get("API_BASE_URL")
+    """Resolve LLM client configuration from injected environment variables."""
+    # Validator injects HF_TOKEN as the proxy key (per checklist pattern).
+    # API_KEY is a secondary fallback in case the validator uses that name instead.
+    api_key = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+    base_url = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+    model = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
-    missing = []
     if not api_key:
-        missing.append("API_KEY")
-    if not base_url:
-        missing.append("API_BASE_URL")
-    if missing:
-        raise SystemExit(
-            "Missing required environment variable(s): "
-            + ", ".join(missing)
-            + ". Initialize the OpenAI client with "
-            + "api_key=os.environ['API_KEY'] and base_url=os.environ['API_BASE_URL']."
-        )
+        raise SystemExit("Set HF_TOKEN or API_KEY environment variable")
 
-    model = os.getenv("MODEL_NAME") or "gpt-4o-mini"
-    print("Resolved LLM config via API_KEY/API_BASE_URL", file=sys.stderr)
     return api_key, base_url, model
 
 
@@ -103,13 +94,11 @@ def main() -> None:
     Main entry point for running the content moderation agent.
     Iterates through easy, medium, and hard task packs and logs performance.
     """
-    if os.getenv("LOAD_DOTENV", "").lower() in {"1", "true", "yes", "on"}:
-        try:
-            from dotenv import load_dotenv
-            load_dotenv()
-            print("Loaded environment variables from .env because LOAD_DOTENV is enabled", file=sys.stderr)
-        except Exception as e:
-            raise SystemExit(f"Failed to load .env with LOAD_DOTENV enabled: {e}") from e
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except Exception:
+        pass
 
     api_key, base_url, model = _resolve_llm_config()
 
@@ -117,7 +106,7 @@ def main() -> None:
     print(f"Using model={model} via {base_url}", file=sys.stderr)
 
     # --- Environment client ---
-    env_client_base = os.getenv("ENV_CLIENT_BASE_URL", "http://localhost:8000")
+    env_client_base = os.getenv("ENV_BASE_URL") or os.getenv("ENV_CLIENT_BASE_URL", "http://localhost:8000")
     async_client = GenericEnvClient(base_url=env_client_base)
     client = async_client.sync()
 
@@ -357,6 +346,8 @@ To moderate the active pending post, output an action with:
             score = 0.0
             if isinstance(final_obs, dict):
                 score = final_obs.get("grader_score") or 0.0
+            # Clamp to (0.0, 1.0) exclusive — validator rejects exactly 0.0 or 1.0
+            score = max(1e-6, min(score, 1 - 1e-6))
 
             print(
                 f"Task {task}: grader_score = {score:.2f} | total_reward = {total_reward:.2f}", file=sys.stderr
