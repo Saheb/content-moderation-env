@@ -22,6 +22,7 @@ class ContentModerationEnvironment(Environment):
         self.decisions: Dict[str, str] = {}  # post_id -> agent's decision (for grader)
         self.post_failures: Dict[str, list[str]] = {} # post_id -> list of failed decisions
         self.viewed_threads: set[str] = set()  # post_ids where view_thread was called
+        self.viewed_posts: set[str] = set()    # post_ids where view_post was called
         self.step_count: int = 0
         self.action_history_counts: Dict[str, int] = {}
         self.current_post_content: Optional[Dict[str, Any]] = None
@@ -45,6 +46,7 @@ class ContentModerationEnvironment(Environment):
         self.decisions.clear()
         self.post_failures.clear()
         self.viewed_threads.clear()
+        self.viewed_posts.clear()
         self.step_count = 0
         self.action_history_counts: Dict[str, int] = {}
         self.current_post_content = None
@@ -93,16 +95,20 @@ class ContentModerationEnvironment(Environment):
             self.action_history_counts[action_key] = self.action_history_counts.get(action_key, 0) + 1
 
         if action.type == "view_post":
-            reward += 0.08
+            if action.post_id not in self.viewed_posts:
+                reward += 0.08
+                if action.post_id:
+                    self.viewed_posts.add(action.post_id)
             if action.post_id and self.task_data and action.post_id in self.task_data["items"]:
                 post = self.task_data["items"][action.post_id]
                 self.current_post_content = {"id": action.post_id, "text": post["text"]}
             result = f"Post {action.post_id} loaded"
 
         elif action.type == "view_thread":
-            reward += 0.12
-            if action.post_id:
-                self.viewed_threads.add(action.post_id)
+            if action.post_id not in self.viewed_threads:
+                reward += 0.12
+                if action.post_id:
+                    self.viewed_threads.add(action.post_id)
             if action.post_id and self.task_data and action.post_id in self.task_data["items"]:
                 self.current_thread_content = self.task_data["items"][action.post_id].get("thread", [])
             result = f"Thread context for {action.post_id} loaded"

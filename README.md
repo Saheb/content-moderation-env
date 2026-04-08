@@ -21,6 +21,7 @@ tags:
 A small, deterministic OpenEnv for evaluating AI agents on user-generated content (UGC) moderation. The environment simulates the sequential review workflow a human trust & safety analyst follows: read a post, check the thread for context, apply a policy, and issue a decision — keep, warn, remove, or escalate.
 
 **[▶ Try the interactive demo](https://saheb-content-moderation-env.hf.space)** — play through the environment as a human agent.
+
 **[📊 Live benchmark visualization](https://saheb-content-moderation-env.hf.space/benchmark.html)** — scores and rewards across all tiers.
 
 ---
