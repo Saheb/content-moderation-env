@@ -5,7 +5,6 @@ via environment variables:
 
     API_KEY          — Preferred API key (required by the hackathon validator)
     API_BASE_URL     — Preferred base URL (required by the hackathon validator)
-    HF_TOKEN         — Optional local-development fallback API key
     MODEL_NAME       — Model name (default: gpt-4o-mini)
 
 Examples:
@@ -77,39 +76,25 @@ def _connect_with_retry(client, max_attempts: int = 6) -> None:
 
 
 def _resolve_llm_config() -> tuple[str, str, str]:
-    """Resolve LLM client configuration, prioritizing the validator contract.
+    """Resolve LLM client configuration using the validator contract only."""
+    api_key = os.environ.get("API_KEY")
+    base_url = os.environ.get("API_BASE_URL")
 
-    If either API_KEY or API_BASE_URL is present, require both so we never
-    silently fall back to a different provider during submission validation.
-    """
-    api_key = os.getenv("API_KEY")
-    base_url = os.getenv("API_BASE_URL")
-
-    if api_key or base_url:
-        missing = []
-        if not api_key:
-            missing.append("API_KEY")
-        if not base_url:
-            missing.append("API_BASE_URL")
-        if missing:
-            raise SystemExit(
-                "Missing required validator environment variable(s): "
-                + ", ".join(missing)
-                + ". When using the hackathon LiteLLM proxy, initialize the OpenAI client with "
-                + "api_key=os.environ['API_KEY'] and base_url=os.environ['API_BASE_URL']."
-            )
-        source = "API_KEY/API_BASE_URL"
-    else:
-        api_key = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
-        base_url = "https://api.openai.com/v1"
-        source = "HF_TOKEN/OPENAI_API_KEY fallback"
-        if not api_key:
-            raise SystemExit(
-                "Set API_KEY and API_BASE_URL, or provide a local-development fallback via HF_TOKEN."
-            )
+    missing = []
+    if not api_key:
+        missing.append("API_KEY")
+    if not base_url:
+        missing.append("API_BASE_URL")
+    if missing:
+        raise SystemExit(
+            "Missing required environment variable(s): "
+            + ", ".join(missing)
+            + ". Initialize the OpenAI client with "
+            + "api_key=os.environ['API_KEY'] and base_url=os.environ['API_BASE_URL']."
+        )
 
     model = os.getenv("MODEL_NAME") or "gpt-4o-mini"
-    print(f"Resolved LLM config via {source}", file=sys.stderr)
+    print("Resolved LLM config via API_KEY/API_BASE_URL", file=sys.stderr)
     return api_key, base_url, model
 
 

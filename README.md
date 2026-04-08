@@ -244,11 +244,10 @@ python inference.py
 |---|---|---|
 | `API_KEY` | preferred | API key, required by the hackathon validator |
 | `API_BASE_URL` | `https://api.openai.com/v1` | LLM provider endpoint, required by the hackathon validator |
-| `HF_TOKEN` | local fallback | Optional API key fallback for local development |
 | `MODEL_NAME` | `gpt-4o-mini` | Model identifier |
 | `ENV_CLIENT_BASE_URL` | `http://localhost:8000` | Environment server URL |
 
-`inference.py` reads configuration from process environment variables by default. To opt into loading a local `.env` for local development, set `LOAD_DOTENV=1` before running it.
+`inference.py` reads `API_KEY` and `API_BASE_URL` only. To opt into loading those values from a local `.env` during development, set `LOAD_DOTENV=1` before running it.
 
 ```bash
 # Groq
