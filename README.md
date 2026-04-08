@@ -20,6 +20,9 @@ tags:
 
 A small, deterministic OpenEnv for evaluating AI agents on user-generated content (UGC) moderation. The environment simulates the sequential review workflow a human trust & safety analyst follows: read a post, check the thread for context, apply a policy, and issue a decision — keep, warn, remove, or escalate.
 
+**[▶ Try the interactive demo](https://saheb-content-moderation-env.hf.space)** — play through the environment as a human agent.
+**[📊 Live benchmark visualization](https://saheb-content-moderation-env.hf.space/benchmark.html)** — scores and rewards across all tiers.
+
 ---
 
 ## Why content moderation?
@@ -49,28 +52,42 @@ This makes it a useful benchmark environment for evaluating **policy-grounded re
 
 ## Benchmark Results
 
-> **Interactive visualization:** [Live Benchmark UI](https://saheb-content-moderation-env.hf.space/benchmark.html) — bar charts for scores and rewards across all tiers.
+
+### One-shot baseline (no thread reading)
+
+All actions forced to `moderate` — models never call `view_post` or `view_thread`.
 
 | Model | Provider | Easy (Score / Rwd) | Medium (Score / Rwd) | Hard (Score / Rwd) | Very Hard (Score / Rwd) | Total Time |
 |---|---|---|---|---|---|---|
-| Mistral-Nemo 12B (zero-shot) | Local (Ollama) | 0.40 / — | 0.30 / — | 0.09 / — | — | — |
-| DeepSeek-R1-Distill-Qwen 14B | Local (mistral.rs) | **1.00** / +1.37 | 0.00 / +0.31 (timeout) | 0.00 / +0.00 (timeout) | — | 60m 26s |
-| gpt-oss-20b | Cloud (Groq) | **1.00** / +3.15 | **1.00** / +2.57 | **0.82** / +4.99 | 0.44 / +1.38 | 5m 8s |
-| gemma-4-31b-it | Cloud (Groq/Google) | **1.00** / +2.25 | **1.00** / +3.46 | 0.66 / -0.93 | — | 7m 34s |
-| Llama 3.3 70B Versatile | Cloud (Groq) | **1.00** / +1.35 | **1.00** / +1.17 | **0.82** / +1.64 | 0.44 / +1.37 | 11m 31s |
-| gpt-oss-120b | Cloud (Groq) | **1.00** / +2.25 | **1.00** / +2.95 | **0.82** / +5.86 | 0.44 / +2.96 | 5m 32s |
-| Gemini 3.1 Flash Lite | Cloud (Google) | **1.00** / +1.90 | **1.00** / +3.30 | **0.82** / +6.39 | — | 8m 19s |
-| Qwen 3 32B | Cloud (Groq) | **1.00** / +3.15 | **1.00** / +1.89 | **0.82** / **+8.51** | 0.44 / **+4.36** | 12m 47s |
-| NVIDIA Nemotron 3 Super 120B | Cloud (OpenRouter) | **1.00** / +3.15 | **1.00** / +2.95 | 0.00 / +2.73 | 0.00 / -0.42 | 16m 5s |
+| Mistral-Nemo 12B | Local (Ollama) | 0.40 / — | 0.30 / — | 0.09 / — | — | — |
+| DeepSeek-R1-Distill-Qwen 14B | Local (mistral.rs) | **1.00**† / +1.37 | 0.00† / +0.31 (timeout) | 0.00† / +0.00 (timeout) | — | 60m 26s |
+| gpt-oss-20b | Cloud (Groq) | **1.00**† / +1.90 | **1.00**† / +3.14 | 0.82 / -0.20 | 0.44 / +2.08 | 10m 36s |
+| gemma-4-31b-it | Cloud (Groq/Google) | **1.00**† / +2.25 | **1.00**† / +3.46 | 0.66 / -0.93 | — | 7m 34s |
+| Llama 3.3 70B Versatile | Cloud (Groq) | **1.00**† / +1.35 | **1.00**† / +1.17 | 0.82 / +1.64 | 0.44 / +1.37 | 11m 31s |
+| gpt-oss-120b | Cloud (Groq) | **1.00**† / +2.25 | **1.00**† / +2.95 | 0.82 / +5.86 | 0.44 / +2.96 | 5m 32s |
+| Gemini 3.1 Flash Lite | Cloud (Google) | **1.00**† / +1.90 | **1.00**† / +3.30 | 0.82 / +6.39 | — | 8m 19s |
+| Qwen 3 32B | Cloud (Groq) | **1.00**† / +3.15 | **1.00**† / +1.89 | 0.82 / **+8.51** | 0.44 / **+4.36** | 12m 47s |
+| NVIDIA Nemotron 3 Super 120B | Cloud (OpenRouter) | **1.00**† / +3.15 | **1.00**† / +2.95 | 0.00† / +2.73 | 0.00† / -0.42 | 16m 5s |
 
-> Scores are clamped to (0.01, 0.99) for validator compliance; values in the table reflect raw grader accuracy before clamping.
+> Hard ceiling: 0.82 (3 thread-critical posts × −0.06). Very hard ceiling: 0.44 (14 thread-critical posts × −0.04).
+
+### Multi-step agent (thread reading enabled)
+
+Models can call `view_post`, `view_thread`, and `lookup_policy` before deciding.
+
+| Model | Provider | Easy (Score / Rwd) | Medium (Score / Rwd) | Hard (Score / Rwd) | Very Hard (Score / Rwd) | Total Time |
+|---|---|---|---|---|---|---|
+| gpt-oss-120b | Cloud (Groq) | **1.00**† / +1.68 | **1.00**† / +4.31 | **0.94** / +7.76 | **0.84** / +5.96 | 9m 47s |
+
+> † Raw grader accuracy shown; the validator requires scores strictly within (0, 1), so 1.00 is emitted as **0.99** and 0.00 as **0.01**.
 
 **Key findings:**
-- Easy/medium: ceiling effect — all capable cloud models score 1.00
-- Hard: score converges at 0.82; reward ranges **−0.93 → +8.51**, separating models that reason efficiently from those that don't
-- Very hard: capable cloud models score exactly **0.44** — the theoretical maximum without reading thread context (14 thread-critical posts × 0.04 penalty = 0.56 deduction from a perfect 1.00). No model reads threads proactively. Reward ranges **−0.42 → +4.36**, showing some differentiation in how models handle the non-thread posts.
+- **One-shot baseline:** Hard score converges at 0.82, very hard at 0.44 — both are hard ceilings imposed by skipping thread context, not model capability limits.
+- **Multi-step agent:** gpt-oss-120b scores 0.94 on hard and **0.84 on very hard** — nearly double the one-shot baseline — by proactively calling `view_thread` on ambiguous posts.
+- **The context gap is the story:** The jump from 0.44 → 0.84 on very_hard is entirely explained by thread reading. Models that reason about *when* to gather context vastly outperform those that moderate on surface text alone.
+- **Reward still differentiates within tiers:** Even among multi-step agents, reward will vary based on how efficiently they reach correct decisions.
 
-**Score alone is insufficient for evaluating frontier moderation agents.** The environment's reward shaping — and the very_hard tier's thread-context penalty — are what provide meaningful signal beyond binary accuracy.
+**Score alone is insufficient for evaluating frontier moderation agents.** The environment's reward shaping and thread-context penalty are designed to surface exactly this gap.
 
 ---
 
@@ -268,8 +285,7 @@ export MODEL_NAME=llama3 && python inference.py
 
 ## Deploying to Hugging Face Spaces
 
-**Live Space:** [huggingface.co/spaces/saheb/content-moderation-env](https://huggingface.co/spaces/saheb/content-moderation-env)
-**Interactive demo:** [huggingface.co/spaces/saheb/content-moderation-env/demo](https://huggingface.co/spaces/saheb/content-moderation-env/demo) — play through the environment as a human agent.
+**Live Space:** [saheb-content-moderation-env.hf.space](https://saheb-content-moderation-env.hf.space) — interactive demo loads at the root URL.
 
 The server listens on port 8000 (`app_port: 8000` in the README YAML tells HF Spaces to route traffic there):
 

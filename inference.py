@@ -44,39 +44,51 @@ SCORE_MAX = 0.99   # validator rejects exactly 1.0
 MAX_RATE_LIMIT_DELAY_S = 300   # bail if retry-after exceeds 5 minutes
 GLOBAL_TIMEOUT_S       = 3600  # 60-minute hard cap across all tasks
 
+# Optional per-step delay — off by default, set STEP_DELAY_S=5 to throttle for rate-limited providers
+STEP_DELAY_S = float(os.getenv("STEP_DELAY_S", "0"))
+
 MODERATION_JSON_SCHEMA = {
     "type": "json_schema",
     "json_schema": {
         "name": "moderation_action",
-        "strict": True,
+        "strict": False,
         "schema": {
             "type": "object",
             "properties": {
-                "type":      {"type": "string", "enum": ["moderate"]},
-                "post_id":   {"type": "string"},
-                "decision":  {"type": "string", "enum": ["keep", "warn", "remove", "escalate"]},
-                "rationale": {"type": "string", "enum": ["P1", "P2", "P3", "P4", "P5"]},
+                "type":      {"type": "string", "enum": ["view_post", "view_thread", "categorize", "lookup_policy", "moderate"]},
+                "post_id":   {"type": ["string", "null"]},
+                "policy_id": {"type": ["string", "null"]},
+                "category":  {"type": ["string", "null"]},
+                "decision":  {"type": ["string", "null"], "enum": ["keep", "warn", "remove", "escalate", None]},
+                "rationale": {"type": ["string", "null"], "enum": ["P1", "P2", "P3", "P4", "P5", None]},
             },
-            "required": ["type", "post_id", "decision", "rationale"],
+            "required": ["type", "post_id", "policy_id", "category", "decision", "rationale"],
             "additionalProperties": False,
         },
     },
 }
 
-SYSTEM_PROMPT = """You are an AI moderator for VibeNet.
-Your task is to review the active post and issue a moderation action.
-Available Policies:
+SYSTEM_PROMPT = """You are an AI moderator for VibeNet working through a queue of posts one at a time.
+
+For each post you may take ONE action per turn. Use multiple turns to gather context before deciding.
+
+Available actions:
+  view_post      — load the full text of the active post          {"type":"view_post","post_id":"<id>"}
+  view_thread    — load the reply thread for context             {"type":"view_thread","post_id":"<id>"}
+  lookup_policy  — look up a specific policy                     {"type":"lookup_policy","policy_id":"<P1-P5>"}
+  moderate       — issue your final decision (use when ready)    {"type":"moderate","post_id":"<id>","decision":"<keep|warn|remove|escalate>","rationale":"<P1-P5>"}
+
+Policies:
   P1: Hate speech or targeted harassment → remove
   P2: Spam, scams, or commercial solicitation → remove
   P3: Doxxing or sharing private personal info → remove
   P4: Edgy humor, sarcasm, or strong opinions → keep (optional warn)
   P5: Inciting violence or real-world harm → escalate
 
-Output an action with:
-  "type": "moderate"
-  "post_id": the id of the active post
-  "decision": "keep", "warn", "remove", or "escalate"
-  "rationale": the policy ID applied (e.g. "P4")"""
+Strategy:
+- For ambiguous posts, always call view_thread before moderating — thread replies often reveal intent.
+- For clear-cut posts (obvious spam, obvious safe venting), you may moderate directly.
+- Never repeat a decision already marked as failed."""
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 
@@ -208,7 +220,8 @@ def main() -> None:
     env_url = os.getenv("ENV_BASE_URL") or os.getenv("ENV_CLIENT_BASE_URL", DEFAULT_ENV_BASE_URL)
     client  = GenericEnvClient(base_url=env_url).sync()
 
-    global_start = time.time()
+    global_start  = time.time()
+    total_sleep_s = 0.0
     final_summary: dict = {}
 
     try:
@@ -236,12 +249,19 @@ def main() -> None:
                     failed_attempts = obs.get("failed_attempts", [])
                     last_result    = obs.get("last_action_result", "")
 
-                    prompt = f"Observation:\n- Active Post to Moderate: {json.dumps(active_post, indent=2)}"
+                    current_post   = obs.get("current_post")
+                    thread_context = obs.get("thread_context")
+
+                    prompt = f"Active post: {json.dumps(active_post, indent=2)}"
+                    if current_post:
+                        prompt += f"\n\nFull post text:\n{json.dumps(current_post, indent=2)}"
+                    if thread_context:
+                        prompt += f"\n\nThread replies:\n{json.dumps(thread_context, indent=2)}"
                     if last_result:
-                        prompt += f"\n- Environment Feedback: {last_result}"
+                        prompt += f"\n\nLast action result: {last_result}"
                     if failed_attempts:
-                        prompt += f"\n  ⚠️ PAST FAILURES: {failed_attempts} — do NOT repeat these decisions."
-                    prompt += '\n\nRespond ONLY with a JSON object:\n{"type":"moderate","post_id":"<id>","decision":"<keep|warn|remove|escalate>","rationale":"<P1-P5>"}'
+                        prompt += f"\n\n⚠️ Failed decisions already tried: {failed_attempts} — do NOT repeat these."
+                    prompt += "\n\nRespond with a single JSON action object."
 
                     print(prompt, file=sys.stderr)
 
@@ -279,6 +299,10 @@ def main() -> None:
                     rewards.append(reward)
                     log_step(step=step, action=json.dumps(clean_data).replace('"', "'"), reward=reward, done=done, error=error_msg)
 
+                    if STEP_DELAY_S > 0 and not done:
+                        time.sleep(STEP_DELAY_S)
+                        total_sleep_s += STEP_DELAY_S
+
                 score = clamp_score(obs.get("grader_score") or 0.0 if (obs := result.observation) else 0.0)
                 print(f"Task {task}: grader_score={score:.2f} total_reward={total_reward:.2f}", file=sys.stderr)
                 success = score >= 0.8
@@ -296,12 +320,17 @@ def main() -> None:
         except Exception:
             pass
 
-    elapsed = time.time() - global_start
-    mins, secs = divmod(elapsed, 60)
+    elapsed    = time.time() - global_start
+    net_elapsed = elapsed - total_sleep_s
+    mins, secs = divmod(net_elapsed, 60)
     print(f"\n{'='*45}\nFINAL RUN SUMMARY\n{'='*45}", file=sys.stderr)
     for t, m in final_summary.items():
         print(f"Task: {t:<8} | Score: {m['score']:.2f} | Reward: {m['reward']:>6.2f} | Success: {m['success']}", file=sys.stderr)
-    print(f"{'-'*45}\nTime: {int(mins)}m {int(secs)}s | Model: {MODEL_NAME}\n{'='*45}\n", file=sys.stderr)
+    time_line = f"Time: {int(mins)}m {int(secs)}s"
+    if total_sleep_s > 0:
+        sm, ss = divmod(total_sleep_s, 60)
+        time_line += f" (excl. {int(sm)}m {int(ss)}s throttle delay)"
+    print(f"{'-'*45}\n{time_line} | Model: {MODEL_NAME}\n{'='*45}\n", file=sys.stderr)
 
 
 if __name__ == "__main__":
