@@ -207,6 +207,7 @@
         <tr>
           <th>Model</th>
           <th>Provider</th>
+          <th>Agent</th>
           <th>Easy Score</th>
           <th>Easy Rwd</th>
           <th>Medium Score</th>
@@ -226,39 +227,51 @@
 <footer>
   <p>
     Source: <a href="https://github.com/saheb/content-moderation-env" target="_blank">content-moderation-env</a>
-    · Hard max score without thread reading: <strong>0.82</strong>
-    · Hard reward range: <strong>−0.93 → +8.51</strong>
-    · Very hard max score without thread reading: <strong>0.44</strong>
-    · Very hard reward range: <strong>−0.42 → +4.36</strong>
+    · One-shot hard ceiling: <strong>0.82</strong> · Multi-step hard best: <strong>0.99</strong>
+    · One-shot very hard ceiling: <strong>0.44</strong> · Multi-step very hard best: <strong>0.88</strong>
+    · Very hard reward range: <strong>−380.23 → +10.37</strong>
   </p>
 </footer>
 
 <script>
 // ── Data ──────────────────────────────────────────────────────────────────────
+// multistep: true  → agent can call view_post / view_thread / lookup_policy
+// multistep: false → one-shot baseline, forced to moderate immediately
 const RESULTS = [
-  { model: "Mistral-Nemo 12B (zero-shot)", provider: "Local (Ollama)",
-    easy: { score: 0.40, rwd: null }, medium: { score: 0.30, rwd: null }, hard: { score: 0.09, rwd: null }, very_hard: { score: null, rwd: null }, time: null },
-  { model: "DeepSeek-R1-Distill 14B",      provider: "Local (mistral.rs)",
-    easy: { score: 1.00, rwd: 1.37 }, medium: { score: 0.00, rwd: 0.31 }, hard: { score: 0.00, rwd: 0.00 }, very_hard: { score: null, rwd: null }, time: "60m 26s" },
-  { model: "gpt-oss-20b",                   provider: "Cloud (Groq)",
-    easy: { score: 1.00, rwd: 3.15 }, medium: { score: 1.00, rwd: 2.57 }, hard: { score: 0.82, rwd: 4.99 }, very_hard: { score: 0.44, rwd: 1.38 }, time: "5m 8s" },
-  { model: "gemma-4-31b-it",                provider: "Cloud (Groq/Google)",
-    easy: { score: 1.00, rwd: 2.25 }, medium: { score: 1.00, rwd: 3.46 }, hard: { score: 0.66, rwd: -0.93 }, very_hard: { score: null, rwd: null }, time: "7m 34s" },
-  { model: "Llama 3.3 70B Versatile",       provider: "Cloud (Groq)",
-    easy: { score: 1.00, rwd: 1.35 }, medium: { score: 1.00, rwd: 1.17 }, hard: { score: 0.82, rwd: 1.64 }, very_hard: { score: 0.44, rwd: 1.37 }, time: "11m 31s" },
-  { model: "gpt-oss-120b",                  provider: "Cloud (Groq)",
-    easy: { score: 1.00, rwd: 2.25 }, medium: { score: 1.00, rwd: 2.95 }, hard: { score: 0.82, rwd: 5.86 }, very_hard: { score: 0.44, rwd: 2.96 }, time: "5m 32s" },
-  { model: "Gemini 3.1 Flash Lite",         provider: "Cloud (Google)",
-    easy: { score: 1.00, rwd: 1.90 }, medium: { score: 1.00, rwd: 3.30 }, hard: { score: 0.82, rwd: 6.39 }, very_hard: { score: null, rwd: null }, time: "8m 19s" },
-  { model: "Qwen 3 32B",                    provider: "Cloud (Groq)",
-    easy: { score: 1.00, rwd: 3.15 }, medium: { score: 1.00, rwd: 1.89 }, hard: { score: 0.82, rwd: 8.51 }, very_hard: { score: 0.44, rwd: 4.36 }, time: "12m 47s" },
-  { model: "NVIDIA Nemotron 3 Super 120B",  provider: "Cloud (OpenRouter)",
-    easy: { score: 1.00, rwd: 3.15 }, medium: { score: 1.00, rwd: 2.95 }, hard: { score: 0.00, rwd: 2.73 }, very_hard: { score: 0.00, rwd: -0.42 }, time: "16m 5s" },
+  // ── One-shot baseline ──────────────────────────────────────────────────────
+  { model: "Mistral-Nemo 12B",              provider: "Local (Ollama)",        multistep: false,
+    easy: { score: 0.40, rwd: null  }, medium: { score: 0.30, rwd: null  }, hard: { score: 0.09, rwd: null  }, very_hard: { score: null, rwd: null  }, time: null },
+  { model: "DeepSeek-R1-Distill 14B",       provider: "Local (mistral.rs)",    multistep: false,
+    easy: { score: 1.00, rwd:  1.37 }, medium: { score: 0.00, rwd:  0.31 }, hard: { score: 0.00, rwd:  0.00 }, very_hard: { score: null, rwd: null  }, time: "60m 26s" },
+  { model: "gpt-oss-20b",                   provider: "Cloud (Groq)",          multistep: false,
+    easy: { score: 1.00, rwd:  1.90 }, medium: { score: 1.00, rwd:  3.14 }, hard: { score: 0.82, rwd: -0.20 }, very_hard: { score: 0.44, rwd:  2.08 }, time: "10m 36s" },
+  { model: "gemma-4-31b-it",                provider: "Cloud (Google)",   multistep: false,
+    easy: { score: 1.00, rwd:  2.25 }, medium: { score: 1.00, rwd:  3.46 }, hard: { score: 0.66, rwd: -0.93 }, very_hard: { score: null, rwd: null  }, time: "7m 34s" },
+  { model: "Llama 3.3 70B Versatile",       provider: "Cloud (Groq)",          multistep: false,
+    easy: { score: 1.00, rwd:  1.35 }, medium: { score: 1.00, rwd:  1.17 }, hard: { score: 0.82, rwd:  1.64 }, very_hard: { score: 0.44, rwd:  1.37 }, time: "11m 31s" },
+  { model: "gpt-oss-120b",                  provider: "Cloud (Groq)",          multistep: false,
+    easy: { score: 1.00, rwd:  2.25 }, medium: { score: 1.00, rwd:  2.95 }, hard: { score: 0.82, rwd:  5.86 }, very_hard: { score: 0.44, rwd:  2.96 }, time: "5m 32s" },
+  { model: "Gemini 3.1 Flash Lite",         provider: "Cloud (Google)",        multistep: false,
+    easy: { score: 1.00, rwd:  1.90 }, medium: { score: 1.00, rwd:  3.30 }, hard: { score: 0.82, rwd:  6.39 }, very_hard: { score: null, rwd: null  }, time: "8m 19s" },
+  { model: "Qwen 3 32B",                    provider: "Cloud (Groq)",          multistep: false,
+    easy: { score: 1.00, rwd:  3.15 }, medium: { score: 1.00, rwd:  1.89 }, hard: { score: 0.82, rwd:  8.51 }, very_hard: { score: 0.44, rwd:  4.36 }, time: "12m 47s" },
+  { model: "NVIDIA Nemotron 3 Super 120B",  provider: "Cloud (OpenRouter)",    multistep: false,
+    easy: { score: 1.00, rwd:  3.15 }, medium: { score: 1.00, rwd:  2.95 }, hard: { score: 0.00, rwd:  2.73 }, very_hard: { score: 0.00, rwd: -0.42 }, time: "16m 5s" },
+
+  // ── Multi-step agent ───────────────────────────────────────────────────────
+  { model: "gemma-4-31b-it",                provider: "Cloud (Google)",   multistep: true,
+    easy: { score: 1.00, rwd:  3.47 }, medium: { score: 1.00, rwd:  5.71 }, hard: { score: 0.99, rwd: 11.33 }, very_hard: { score: 0.88, rwd: 10.37 }, time: "5m 14s" },
+  { model: "gpt-oss-120b",                  provider: "Cloud (Groq)",          multistep: true,
+    easy: { score: 1.00, rwd:  1.68 }, medium: { score: 1.00, rwd:  4.31 }, hard: { score: 0.94, rwd:  7.76 }, very_hard: { score: 0.84, rwd:  5.96 }, time: "9m 47s" },
+  { model: "Llama 3.1 8B Instant",          provider: "Cloud (Groq)",          multistep: true,
+    easy: { score: 0.40, rwd: -13.76 }, medium: { score: 0.00, rwd: -59.40 }, hard: { score: 0.00, rwd: -29.59 }, very_hard: { score: 0.15, rwd: -380.23 }, time: "5m 41s" },
 ];
 
-// Sort by hard score desc, then hard reward desc
+// Sort: multi-step first, then by hard score desc, then hard reward desc
 const sorted = [...RESULTS].sort((a, b) =>
-  b.hard.score - a.hard.score || (b.hard.rwd ?? -Infinity) - (a.hard.rwd ?? -Infinity)
+  (b.multistep ? 1 : 0) - (a.multistep ? 1 : 0) ||
+  b.hard.score - a.hard.score ||
+  (b.hard.rwd ?? -Infinity) - (a.hard.rwd ?? -Infinity)
 );
 
 const labels = sorted.map(r => r.model);
@@ -474,6 +487,7 @@ sorted.forEach(r => {
   tr.innerHTML = `
     <td style="font-weight:500">${r.model}</td>
     <td><span class="tag">${r.provider}</span></td>
+    <td><span class="tag" style="${r.multistep ? 'color:#34d399;border-color:#34d399' : ''}">${r.multistep ? 'multi-step' : 'one-shot'}</span></td>
     <td>${scoreFmt(r.easy.score)}</td>
     <td>${rwdFmt(r.easy.rwd)}</td>
     <td>${scoreFmt(r.medium.score)}</td>

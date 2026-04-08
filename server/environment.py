@@ -90,10 +90,17 @@ class ContentModerationEnvironment(Environment):
         reward: float = 0.0
         result: str = ""
         
-        # Track loop count for moderate actions to detect infinite loops
-        action_key: str | None = None
+        # Build a key for every action type so any repeated action can be detected
         if action.type == "moderate" and action.post_id and action.decision:
-            action_key = f"{action.post_id}_{action.decision}_{action.rationale}"
+            action_key = f"moderate_{action.post_id}_{action.decision}_{action.rationale}"
+        elif action.type in ("view_post", "view_thread", "categorize") and action.post_id:
+            action_key = f"{action.type}_{action.post_id}"
+        elif action.type == "lookup_policy" and action.policy_id:
+            action_key = f"lookup_policy_{action.policy_id}"
+        else:
+            action_key = None
+
+        if action_key is not None:
             self.action_history_counts[action_key] = self.action_history_counts.get(action_key, 0) + 1
 
         if action.type == "view_post":
@@ -101,19 +108,23 @@ class ContentModerationEnvironment(Environment):
                 reward += 0.08
                 if action.post_id:
                     self.viewed_posts.add(action.post_id)
+                result = f"Post {action.post_id} loaded"
+            else:
+                result = f"Post {action.post_id} already viewed — no additional reward. Please moderate or move on."
             if action.post_id and self.task_data and action.post_id in self.task_data["items"]:
                 post = self.task_data["items"][action.post_id]
                 self.current_post_content = {"id": action.post_id, "text": post["text"]}
-            result = f"Post {action.post_id} loaded"
 
         elif action.type == "view_thread":
             if action.post_id not in self.viewed_threads:
                 reward += 0.12
                 if action.post_id:
                     self.viewed_threads.add(action.post_id)
+                result = f"Thread context for {action.post_id} loaded"
+            else:
+                result = f"Thread for {action.post_id} already viewed — no additional reward. Please moderate or move on."
             if action.post_id and self.task_data and action.post_id in self.task_data["items"]:
                 self.current_thread_content = self.task_data["items"][action.post_id].get("thread", [])
-            result = f"Thread context for {action.post_id} loaded"
 
         elif action.type == "categorize":
             reward += 0.15
@@ -154,7 +165,9 @@ class ContentModerationEnvironment(Environment):
                 reward += 0.10
                 if action.policy_id:
                     self.looked_up_policies.add(action.policy_id)
-            result = f"Policy {action.policy_id} looked up: {self.policies.get(action.policy_id, 'Unknown')}"
+                result = f"Policy {action.policy_id}: {self.policies.get(action.policy_id, 'Unknown')}"
+            else:
+                result = f"Policy {action.policy_id} already looked up — no additional reward. {self.policies.get(action.policy_id, 'Unknown')}"
 
         elif action.type == "escalate":
             if action.post_id and self.task_data and self.task_data["ground_truth"].get(action.post_id, {}).get("label") == "escalate":
@@ -170,16 +183,28 @@ class ContentModerationEnvironment(Environment):
             reward -= 0.10
             result = "Unknown action type"
 
-        # Apply loop penalty based on task difficulty level
-        limit = {"easy": 3, "medium": 4, "hard": 5, "very_hard": 5}.get(self.task_name, 3)
-        loop_exceeded = False
+        # Apply loop penalty — context actions have a hard limit of 3 repeats,
+        # moderate actions scale with task difficulty
+        if action.type == "moderate":
+            limit = {"easy": 3, "medium": 4, "hard": 5, "very_hard": 5}.get(self.task_name, 3)
+        else:
+            limit = 3
 
+        loop_exceeded = False
         if action_key is not None:
             count = self.action_history_counts.get(action_key, 0)
             if count >= limit:
                 reward -= 5.0
-                result = f"Infinite loop detected: Model repeated the exact same decision for post {action.post_id} {count} times. Heavy penalty applied."
-                loop_exceeded = True
+                if action.type == "lookup_policy":
+                    result = f"Infinite loop detected: 'lookup_policy' repeated {count} times for policy {action.policy_id}. Stop looking up policies and moderate the active post."
+                else:
+                    result = f"Infinite loop detected: '{action.type}' repeated {count} times on post {action.post_id}. That post has been forfeited. Act on the new active post shown above."
+                    if action.post_id and action.post_id not in self.moderated:
+                        self.moderated.add(action.post_id)
+                        self.decisions[action.post_id] = "skipped"
+                    self.current_post_content = None
+                    self.current_thread_content = None
+                loop_exceeded = False  # episode continues
 
         # Episode termination
         done = len(self.moderated) == len(self.task_data["items"]) or self.step_count >= self.task_data["max_steps"] or loop_exceeded

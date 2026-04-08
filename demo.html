@@ -798,5 +798,33 @@
       .replace(/"/g,'&quot;');
   }
 </script>
+
+<!-- ── Benchmark section ───────────────────────────────────────────────────── -->
+<div style="border-top:1px solid var(--border); margin-top:3rem; padding-top:2rem;">
+  <div style="text-align:center; margin-bottom:1rem;">
+    <h2 style="font-size:1.1rem; font-weight:700; letter-spacing:-0.01em;">Model Benchmark Results</h2>
+    <p style="color:var(--muted); font-size:0.85rem; margin-top:0.3rem;">
+      One-shot vs. multi-step agent across all four difficulty tiers
+    </p>
+  </div>
+  <iframe
+    src="/benchmark.html"
+    style="width:100%; border:none; border-radius:12px; display:block;"
+    scrolling="no"
+    id="benchmarkFrame"
+    title="Benchmark Results"
+  ></iframe>
+</div>
+<script>
+  // Auto-resize iframe to its content height
+  const frame = document.getElementById('benchmarkFrame');
+  frame.addEventListener('load', () => {
+    try {
+      frame.style.height = frame.contentDocument.body.scrollHeight + 'px';
+    } catch (_) {
+      frame.style.height = '1200px'; // cross-origin fallback
+    }
+  });
+</script>
 </body>
 </html>

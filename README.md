@@ -63,7 +63,7 @@ All actions forced to `moderate` — models never call `view_post` or `view_thre
 | Mistral-Nemo 12B | Local (Ollama) | 0.40 / — | 0.30 / — | 0.09 / — | — | — |
 | DeepSeek-R1-Distill-Qwen 14B | Local (mistral.rs) | **1.00**† / +1.37 | 0.00† / +0.31 (timeout) | 0.00† / +0.00 (timeout) | — | 60m 26s |
 | gpt-oss-20b | Cloud (Groq) | **1.00**† / +1.90 | **1.00**† / +3.14 | 0.82 / -0.20 | 0.44 / +2.08 | 10m 36s |
-| gemma-4-31b-it | Cloud (Groq/Google) | **1.00**† / +2.25 | **1.00**† / +3.46 | 0.66 / -0.93 | — | 7m 34s |
+| gemma-4-31b-it | Cloud (Google) | **1.00**† / +2.25 | **1.00**† / +3.46 | 0.66 / -0.93 | — | 7m 34s (one-shot only) |
 | Llama 3.3 70B Versatile | Cloud (Groq) | **1.00**† / +1.35 | **1.00**† / +1.17 | 0.82 / +1.64 | 0.44 / +1.37 | 11m 31s |
 | gpt-oss-120b | Cloud (Groq) | **1.00**† / +2.25 | **1.00**† / +2.95 | 0.82 / +5.86 | 0.44 / +2.96 | 5m 32s |
 | Gemini 3.1 Flash Lite | Cloud (Google) | **1.00**† / +1.90 | **1.00**† / +3.30 | 0.82 / +6.39 | — | 8m 19s |
@@ -78,15 +78,17 @@ Models can call `view_post`, `view_thread`, and `lookup_policy` before deciding.
 
 | Model | Provider | Easy (Score / Rwd) | Medium (Score / Rwd) | Hard (Score / Rwd) | Very Hard (Score / Rwd) | Total Time |
 |---|---|---|---|---|---|---|
+| gemma-4-31b-it | Cloud (Google) | **1.00**† / +3.47 | **1.00**† / +5.71 | **0.99** / +11.33 | **0.88** / +10.37 | 5m 14s |
 | gpt-oss-120b | Cloud (Groq) | **1.00**† / +1.68 | **1.00**† / +4.31 | **0.94** / +7.76 | **0.84** / +5.96 | 9m 47s |
+| Llama 3.1 8B Instant | Cloud (Groq) | 0.40 / -13.76 | 0.01† / -59.40 | 0.01† / -29.59 | 0.15 / -380.23 | 5m 41s |
 
 > † Raw grader accuracy shown; the validator requires scores strictly within (0, 1), so 1.00 is emitted as **0.99** and 0.00 as **0.01**.
 
 **Key findings:**
 - **One-shot baseline:** Hard score converges at 0.82, very hard at 0.44 — both are hard ceilings imposed by skipping thread context, not model capability limits.
-- **Multi-step agent:** gpt-oss-120b scores 0.94 on hard and **0.84 on very hard** — nearly double the one-shot baseline — by proactively calling `view_thread` on ambiguous posts.
-- **The context gap is the story:** The jump from 0.44 → 0.84 on very_hard is entirely explained by thread reading. Models that reason about *when* to gather context vastly outperform those that moderate on surface text alone.
-- **Reward still differentiates within tiers:** Even among multi-step agents, reward will vary based on how efficiently they reach correct decisions.
+- **Multi-step agent:** gemma-4-31b-it scores **0.99 on hard and 0.88 on very hard**, the strongest result in the table. gpt-oss-120b scores 0.94 / 0.84. Both vastly exceed the one-shot baseline by proactively calling `view_thread` on ambiguous posts.
+- **The context gap is the story:** The jump from 0.44 → 0.88 on very_hard is entirely explained by thread reading. Models that reason about *when* to gather context vastly outperform those that moderate on surface text alone.
+- **Reward discriminates where score cannot:** Llama 3.1 8B scores 0.15 on very_hard — but its reward of −380.23 (76 loop penalties at −5.0 each) reveals it was stuck in repetitive loops the entire episode. Score alone would not surface this failure mode.
 
 **Score alone is insufficient for evaluating frontier moderation agents.** The environment's reward shaping and thread-context penalty are designed to surface exactly this gap.
 
@@ -180,7 +182,17 @@ All actions are defined in `models.py` as `ModerationAction`.
 | Incorrect decision | −0.35 |
 | Incorrect + removing safe content (`keep` post) | −0.35 − 0.55 = **−0.90** |
 
-**Loop detection:** If the same `(post_id, decision, rationale)` tuple is repeated ≥ N times (N=3 easy, 4 medium, 5 hard/very_hard), a −5.0 penalty is applied and the episode terminates.
+**Reward deduplication:** Context actions (`view_post`, `view_thread`, `lookup_policy`) only award their reward on the **first call per target** within an episode. Repeat calls return the same data but yield +0.00 and trigger a warning in `last_action_result`.
+
+**Loop detection:** Repeating the same action on the same target 3+ times triggers a **−5.0 penalty**. Behaviour differs by action type:
+
+| Looping action | Consequence |
+|---|---|
+| `view_post` / `view_thread` / `categorize` on same `post_id` | Post forfeited (`"skipped"` — scores 0), stale content cleared, episode continues with next post |
+| `lookup_policy` on same `policy_id` | Penalty applied, model told to stop and moderate — no post forfeited |
+| `moderate` with same `(post_id, decision, rationale)` (N=3/4/5 by difficulty) | Post forfeited, episode continues |
+
+The episode never terminates early from a loop — the model is always given a chance to complete remaining posts.
 
 ---
 
