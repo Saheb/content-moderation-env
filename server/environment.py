@@ -228,7 +228,7 @@ class ContentModerationEnvironment(Environment):
                 if pid in self.decisions and pid not in self.viewed_threads:
                     score -= 0.04  # up to 0.56 deduction across 14 posts
 
-        return round(max(0.0, min(1.0, score)), 2)
+        return round(max(0.01, min(score, 0.99)), 2)
 
     def _get_active_post(self) -> Optional[Dict[str, str]]:
         """Identifies the next pending post in the sequential queue."""

@@ -104,7 +104,7 @@ def main() -> None:
         # Initialise per-task state before try so finally can always emit [END]
         rewards: List[float] = []
         step = 0
-        score = 0.0
+        score = 0.01
         success = False
         total_reward = 0.0
 
@@ -334,7 +334,7 @@ To moderate the active pending post, output an action with:
             if isinstance(final_obs, dict):
                 score = final_obs.get("grader_score") or 0.0
             # Clamp to (0.0, 1.0) exclusive — validator rejects exactly 0.0 or 1.0
-            score = max(1e-6, min(score, 1 - 1e-6))
+            score = max(0.01, min(score, 0.99))
 
             print(
                 f"Task {task}: grader_score = {score:.2f} | total_reward = {total_reward:.2f}", file=sys.stderr
