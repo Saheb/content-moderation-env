@@ -75,35 +75,22 @@ def _connect_with_retry(client, max_attempts: int = 6) -> None:
             time.sleep(wait)
 
 
-def _resolve_llm_config() -> tuple[str, str, str]:
-    """Resolve LLM client configuration from injected environment variables."""
-    # Validator injects HF_TOKEN as the proxy key (per checklist pattern).
-    # API_KEY is a secondary fallback in case the validator uses that name instead.
-    api_key = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
-    base_url = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-    model = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-
-    if not api_key:
-        raise SystemExit("Set HF_TOKEN or API_KEY environment variable")
-
-    return api_key, base_url, model
-
-
 def main() -> None:
     """
     Main entry point for running the content moderation agent.
     Iterates through easy, medium, and hard task packs and logs performance.
     """
-    try:
-        from dotenv import load_dotenv
-        load_dotenv()
-    except Exception:
-        pass
+    # Read environment variables exactly as specified in the hackathon docs.
+    # API_BASE_URL and MODEL_NAME must have defaults; HF_TOKEN is mandatory with no default.
+    API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+    MODEL_NAME   = os.getenv("MODEL_NAME",   "Qwen/Qwen2.5-72B-Instruct")
+    HF_TOKEN     = os.getenv("HF_TOKEN")
 
-    api_key, base_url, model = _resolve_llm_config()
+    if HF_TOKEN is None:
+        raise SystemExit("HF_TOKEN environment variable is required")
 
-    openai_client = OpenAI(api_key=api_key, base_url=base_url)
-    print(f"Using model={model} via {base_url}", file=sys.stderr)
+    openai_client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+    print(f"Using model={MODEL_NAME} via {API_BASE_URL}", file=sys.stderr)
 
     # --- Environment client ---
     env_client_base = os.getenv("ENV_BASE_URL") or os.getenv("ENV_CLIENT_BASE_URL", "http://localhost:8000")
@@ -121,7 +108,7 @@ def main() -> None:
         success = False
         total_reward = 0.0
 
-        log_start(task=task, env="content-moderation-env", model=model)
+        log_start(task=task, env="content-moderation-env", model=MODEL_NAME)
         try:
             _connect_with_retry(client)
             result = client.reset(task_name=task)
@@ -189,7 +176,7 @@ To moderate the active pending post, output an action with:
                         try:
                             # 1. Primary Attempt: Strict JSON Schema (Best for GPT-4 / Groq)
                             resp = openai_client.chat.completions.create(
-                                model=model,
+                                model=MODEL_NAME,
                                 messages=msg_list,
                                 response_format={
                                     "type": "json_schema",
@@ -216,14 +203,14 @@ To moderate the active pending post, output an action with:
                                 try:
                                     # Fallback 1: generic json_object
                                     resp = openai_client.chat.completions.create(
-                                        model=model,
+                                        model=MODEL_NAME,
                                         messages=msg_list,
                                         response_format={"type": "json_object"},
                                     )
                                 except (openai.UnprocessableEntityError, openai.BadRequestError, openai.InternalServerError):
                                     # Fallback 2: Plain Text (Worst case)
                                     resp = openai_client.chat.completions.create(
-                                        model=model,
+                                        model=MODEL_NAME,
                                         messages=msg_list,
                                     )
                             else:
@@ -338,7 +325,7 @@ To moderate the active pending post, output an action with:
 
                 # Preemptive throttle for free APIs like Groq (stays under 12K TPM / 30 RPM limits)
                 # Bypass artificial delay for local endpoints to maximize inference speed
-                if not any(lh in base_url for lh in ("localhost", "127.0.0.1", "0.0.0.0")):
+                if not any(lh in API_BASE_URL for lh in ("localhost", "127.0.0.1", "0.0.0.0")):
                     time.sleep(5)
 
             # Read grader score from the observation (surfaced as a top-level field)
@@ -374,7 +361,7 @@ To moderate the active pending post, output an action with:
         print(f"Task: {t: <8} | Score: {m['score']:.2f} | Reward: {m['reward']:>6.2f} | Success: {m['success']}", file=sys.stderr)
     print("-" * 45, file=sys.stderr)
     print(f"Total Time Taken: {int(mins)}m {int(secs)}s", file=sys.stderr)
-    print(f"Model: {model}", file=sys.stderr)
+    print(f"Model: {MODEL_NAME}", file=sys.stderr)
     print("="*45 + "\n", file=sys.stderr)
 
 
