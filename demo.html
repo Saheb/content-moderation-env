@@ -465,8 +465,7 @@
   </div>
 
   <p class="api-note">
-    OpenEnv API: <a href="/docs" target="_blank">/docs</a> ·
-    Benchmark: <a href="./benchmark.html" target="_blank">benchmark.html</a>
+    OpenEnv API: <a href="/docs" target="_blank">/docs</a>
   </p>
 </div>
 
@@ -799,8 +798,43 @@
   }
 </script>
 
+<!-- ── Scroll hint ─────────────────────────────────────────────────────────── -->
+<div id="scrollHint" style="
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  pointer-events: none;
+  transition: opacity 0.4s;
+  z-index: 100;
+">
+  <span style="font-size:0.75rem; color:var(--muted); letter-spacing:0.05em; text-transform:uppercase;">Benchmark below</span>
+  <svg id="scrollArrow" width="20" height="20" viewBox="0 0 20 20" fill="none" style="animation: bounce 1.4s infinite;">
+    <path d="M10 4v12M10 16l-4-4M10 16l4-4" stroke="#6366f1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</div>
+<style>
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(5px); }
+  }
+</style>
+<script>
+  (function () {
+    const hint = document.getElementById('scrollHint');
+    const benchmarkTop = document.getElementById('benchmarkSection');
+    window.addEventListener('scroll', function () {
+      hint.style.opacity = window.scrollY > 80 ? '0' : '1';
+    }, { passive: true });
+  })();
+</script>
+
 <!-- ── Benchmark section ───────────────────────────────────────────────────── -->
-<div style="border-top:1px solid var(--border); margin-top:3rem; padding-top:2rem;">
+<div id="benchmarkSection" style="border-top:1px solid var(--border); margin-top:3rem; padding-top:2rem;">
   <div style="text-align:center; margin-bottom:1rem;">
     <h2 style="font-size:1.1rem; font-weight:700; letter-spacing:-0.01em;">Model Benchmark Results</h2>
     <p style="color:var(--muted); font-size:0.85rem; margin-top:0.3rem;">
