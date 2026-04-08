@@ -23,6 +23,7 @@ class ContentModerationEnvironment(Environment):
         self.post_failures: Dict[str, list[str]] = {} # post_id -> list of failed decisions
         self.viewed_threads: set[str] = set()  # post_ids where view_thread was called
         self.viewed_posts: set[str] = set()    # post_ids where view_post was called
+        self.looked_up_policies: set[str] = set()  # policy_ids already looked up
         self.step_count: int = 0
         self.action_history_counts: Dict[str, int] = {}
         self.current_post_content: Optional[Dict[str, Any]] = None
@@ -47,6 +48,7 @@ class ContentModerationEnvironment(Environment):
         self.post_failures.clear()
         self.viewed_threads.clear()
         self.viewed_posts.clear()
+        self.looked_up_policies.clear()
         self.step_count = 0
         self.action_history_counts: Dict[str, int] = {}
         self.current_post_content = None
@@ -148,7 +150,10 @@ class ContentModerationEnvironment(Environment):
                     reward -= 0.55
 
         elif action.type == "lookup_policy":
-            reward += 0.10
+            if action.policy_id not in self.looked_up_policies:
+                reward += 0.10
+                if action.policy_id:
+                    self.looked_up_policies.add(action.policy_id)
             result = f"Policy {action.policy_id} looked up: {self.policies.get(action.policy_id, 'Unknown')}"
 
         elif action.type == "escalate":
