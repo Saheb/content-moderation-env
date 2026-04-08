@@ -118,12 +118,13 @@ def main() -> None:
     Main entry point for running the content moderation agent.
     Iterates through easy, medium, and hard task packs and logs performance.
     """
-    # Optional: load environment variables from a .env file if available
-    try:
-        from dotenv import load_dotenv
-        load_dotenv()
-    except Exception:
-        pass
+    if os.getenv("LOAD_DOTENV", "").lower() in {"1", "true", "yes", "on"}:
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+            print("Loaded environment variables from .env because LOAD_DOTENV is enabled", file=sys.stderr)
+        except Exception as e:
+            raise SystemExit(f"Failed to load .env with LOAD_DOTENV enabled: {e}") from e
 
     api_key, base_url, model = _resolve_llm_config()
 

@@ -248,6 +248,8 @@ python inference.py
 | `MODEL_NAME` | `gpt-4o-mini` | Model identifier |
 | `ENV_CLIENT_BASE_URL` | `http://localhost:8000` | Environment server URL |
 
+`inference.py` reads configuration from process environment variables by default. To opt into loading a local `.env` for local development, set `LOAD_DOTENV=1` before running it.
+
 ```bash
 # Groq
 export API_KEY=gsk_... && export API_BASE_URL=https://api.groq.com/openai/v1
