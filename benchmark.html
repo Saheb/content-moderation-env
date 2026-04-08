@@ -173,7 +173,7 @@
 
 <!-- ── Score comparison (full width) ── -->
 <div class="card full">
-  <h2>Grader Score by Difficulty Tier</h2>
+  <h2>One-Shot Baseline — Grader Score by Difficulty Tier</h2>
   <div class="legend">
     <span class="legend-item"><span class="legend-dot" style="background:var(--easy)"></span>Easy</span>
     <span class="legend-item"><span class="legend-dot" style="background:var(--medium)"></span>Medium</span>
@@ -181,6 +181,17 @@
     <span class="legend-item"><span class="legend-dot" style="background:#a78bfa"></span>Very Hard</span>
   </div>
   <div class="chart-wrap"><canvas id="scoreChart"></canvas></div>
+</div>
+
+<div class="card full">
+  <h2>Multi-Step Agent — Grader Score by Difficulty Tier</h2>
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="background:var(--easy)"></span>Easy</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--medium)"></span>Medium</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--hard)"></span>Hard</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#a78bfa"></span>Very Hard</span>
+  </div>
+  <div class="chart-wrap"><canvas id="scoreChartMulti"></canvas></div>
 </div>
 
 <!-- ── Reward cards ── -->
@@ -263,18 +274,23 @@ const RESULTS = [
     easy: { score: 1.00, rwd:  3.47 }, medium: { score: 1.00, rwd:  5.71 }, hard: { score: 0.99, rwd: 11.33 }, very_hard: { score: 0.88, rwd: 10.37 }, time: "5m 14s" },
   { model: "gpt-oss-120b",                  provider: "Cloud (Groq)",          multistep: true,
     easy: { score: 1.00, rwd:  1.68 }, medium: { score: 1.00, rwd:  4.31 }, hard: { score: 0.94, rwd:  7.76 }, very_hard: { score: 0.84, rwd:  5.96 }, time: "9m 47s" },
-  { model: "Llama 3.1 8B Instant",          provider: "Cloud (Groq)",          multistep: true,
-    easy: { score: 0.40, rwd: -13.76 }, medium: { score: 0.00, rwd: -59.40 }, hard: { score: 0.00, rwd: -29.59 }, very_hard: { score: 0.15, rwd: -380.23 }, time: "5m 41s" },
 ];
 
-// Sort: multi-step first, then by hard score desc, then hard reward desc
-const sorted = [...RESULTS].sort((a, b) =>
-  (b.multistep ? 1 : 0) - (a.multistep ? 1 : 0) ||
-  b.hard.score - a.hard.score ||
-  (b.hard.rwd ?? -Infinity) - (a.hard.rwd ?? -Infinity)
-);
+// Split into one-shot and multi-step sets
+const oneShot   = RESULTS.filter(r => !r.multistep).sort((a, b) =>
+  b.hard.score - a.hard.score || (b.hard.rwd ?? -Infinity) - (a.hard.rwd ?? -Infinity));
+const multiStep = RESULTS.filter(r =>  r.multistep).sort((a, b) =>
+  b.hard.score - a.hard.score || (b.hard.rwd ?? -Infinity) - (a.hard.rwd ?? -Infinity));
 
-const labels = sorted.map(r => r.model);
+// Full sorted list (multi-step first) for reward charts and table
+const sorted = [...multiStep, ...oneShot];
+
+// Models that appear in both runs get an agent suffix in combined views
+const modelCounts = {};
+RESULTS.forEach(r => { modelCounts[r.model] = (modelCounts[r.model] || 0) + 1; });
+const labels = sorted.map(r =>
+  modelCounts[r.model] > 1 ? `${r.model} (${r.multistep ? 'multi-step' : 'one-shot'})` : r.model
+);
 
 // ── Chart defaults ─────────────────────────────────────────────────────────────
 Chart.defaults.color = "#8892a4";
@@ -307,36 +323,37 @@ const baseBarOpts = {
   },
 };
 
-// ── Score chart ────────────────────────────────────────────────────────────────
-new Chart(document.getElementById("scoreChart"), {
+// ── Score chart helper ─────────────────────────────────────────────────────────
+function makeScoreChart(id, rows) {
+  new Chart(document.getElementById(id), {
   type: "bar",
   data: {
-    labels,
+    labels: rows.map(r => r.model),
     datasets: [
       {
         label: "Easy",
-        data: sorted.map(r => r.easy.score),
+        data: rows.map(r => r.easy.score),
         backgroundColor: "rgba(34,197,94,0.75)",
         borderRadius: 4,
         barPercentage: 0.7,
       },
       {
         label: "Medium",
-        data: sorted.map(r => r.medium.score),
+        data: rows.map(r => r.medium.score),
         backgroundColor: "rgba(245,158,11,0.75)",
         borderRadius: 4,
         barPercentage: 0.7,
       },
       {
         label: "Hard",
-        data: sorted.map(r => r.hard.score),
+        data: rows.map(r => r.hard.score),
         backgroundColor: "rgba(239,68,68,0.75)",
         borderRadius: 4,
         barPercentage: 0.7,
       },
       {
         label: "Very Hard",
-        data: sorted.map(r => r.very_hard.score),
+        data: rows.map(r => r.very_hard.score),
         backgroundColor: "rgba(167,139,250,0.75)",
         borderRadius: 4,
         barPercentage: 0.7,
@@ -354,7 +371,7 @@ new Chart(document.getElementById("scoreChart"), {
       tooltip: {
         ...baseBarOpts.plugins.tooltip,
         callbacks: {
-          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}`,
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.raw != null ? ctx.parsed.y.toFixed(2) : 'N/A'}`,
         },
       },
     },
@@ -363,7 +380,11 @@ new Chart(document.getElementById("scoreChart"), {
       y: { ...baseBarOpts.scales.y, min: 0, max: 1.05 },
     },
   },
-});
+  });
+}
+
+makeScoreChart("scoreChart",      oneShot);
+makeScoreChart("scoreChartMulti", multiStep);
 
 // ── Hard reward chart ──────────────────────────────────────────────────────────
 new Chart(document.getElementById("rewardHardChart"), {

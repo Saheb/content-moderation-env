@@ -80,7 +80,6 @@ Models can call `view_post`, `view_thread`, and `lookup_policy` before deciding.
 |---|---|---|---|---|---|---|
 | gemma-4-31b-it | Cloud (Google) | **1.00**† / +3.47 | **1.00**† / +5.71 | **0.99** / +11.33 | **0.88** / +10.37 | 5m 14s |
 | gpt-oss-120b | Cloud (Groq) | **1.00**† / +1.68 | **1.00**† / +4.31 | **0.94** / +7.76 | **0.84** / +5.96 | 9m 47s |
-| Llama 3.1 8B Instant | Cloud (Groq) | 0.40 / -13.76 | 0.01† / -59.40 | 0.01† / -29.59 | 0.15 / -380.23 | 5m 41s |
 
 > † Raw grader accuracy shown; the validator requires scores strictly within (0, 1), so 1.00 is emitted as **0.99** and 0.00 as **0.01**.
 
@@ -88,7 +87,6 @@ Models can call `view_post`, `view_thread`, and `lookup_policy` before deciding.
 - **One-shot baseline:** Hard score converges at 0.82, very hard at 0.44 — both are hard ceilings imposed by skipping thread context, not model capability limits.
 - **Multi-step agent:** gemma-4-31b-it scores **0.99 on hard and 0.88 on very hard**, the strongest result in the table. gpt-oss-120b scores 0.94 / 0.84. Both vastly exceed the one-shot baseline by proactively calling `view_thread` on ambiguous posts.
 - **The context gap is the story:** The jump from 0.44 → 0.88 on very_hard is entirely explained by thread reading. Models that reason about *when* to gather context vastly outperform those that moderate on surface text alone.
-- **Reward discriminates where score cannot:** Llama 3.1 8B scores 0.15 on very_hard — but its reward of −380.23 (76 loop penalties at −5.0 each) reveals it was stuck in repetitive loops the entire episode. Score alone would not surface this failure mode.
 
 **Score alone is insufficient for evaluating frontier moderation agents.** The environment's reward shaping and thread-context penalty are designed to surface exactly this gap.
 
