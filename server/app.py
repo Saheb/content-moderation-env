@@ -7,10 +7,15 @@ from fastapi import HTTPException
 from fastapi.responses import HTMLResponse
 
 from openenv.core.env_server import create_fastapi_app
+from env_loader import load_environment
 from .environment import ContentModerationEnvironment
 from models import ModerationAction, ModerationObservation
 
 logger = logging.getLogger(__name__)
+
+_loaded_env_file = load_environment()
+if _loaded_env_file:
+    logger.info("Loaded environment variables from %s", _loaded_env_file)
 
 # Demo session store — keyed by session UUID, capped at 50 concurrent sessions
 _demo_sessions: dict = {}

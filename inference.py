@@ -28,7 +28,10 @@ import openai
 from openai import OpenAI, RateLimitError
 
 from openenv import GenericEnvClient
+from env_loader import load_environment
 from models import ModerationAction
+
+load_environment()
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -56,13 +59,13 @@ MODERATION_JSON_SCHEMA = {
             "type": "object",
             "properties": {
                 "type":      {"type": "string", "enum": ["view_post", "view_thread", "categorize", "lookup_policy", "moderate"]},
-                "post_id":   {"type": ["string", "null"]},
-                "policy_id": {"type": ["string", "null"]},
-                "category":  {"type": ["string", "null"]},
-                "decision":  {"type": ["string", "null"], "enum": ["keep", "warn", "remove", "escalate", None]},
-                "rationale": {"type": ["string", "null"], "enum": ["P1", "P2", "P3", "P4", "P5", None]},
+                "post_id":   {"type": "string"},
+                "policy_id": {"type": "string"},
+                "category":  {"type": "string"},
+                "decision":  {"type": "string", "enum": ["keep", "warn", "remove", "escalate"]},
+                "rationale": {"type": "string", "enum": ["P1", "P2", "P3", "P4", "P5"]},
             },
-            "required": ["type", "post_id", "policy_id", "category", "decision", "rationale"],
+            "required": ["type"],
             "additionalProperties": False,
         },
     },
@@ -139,7 +142,7 @@ def _call_llm(client: OpenAI, model: str, messages: list) -> object:
             if fmt is None:
                 raise  # already on plain text, nothing left to try
             err = str(e).lower()
-            if any(kw in err for kw in ("response_format", "json_object", "json_schema", "unknown variant", "internal error")):
+            if any(kw in err for kw in ("response_format", "json_object", "json_schema", "unknown variant", "internal error", "unsupported", "not supported", "invalid schema", "enum", "json_validate_failed", "validate json", "failed_generation")):
                 continue  # try next format
             raise
 
@@ -260,7 +263,11 @@ def main() -> None:
                     if last_result:
                         prompt += f"\n\nLast action result: {last_result}"
                     if failed_attempts:
+                        all_decisions = ["keep", "warn", "remove", "escalate"]
+                        remaining = [d for d in all_decisions if d not in failed_attempts]
                         prompt += f"\n\n⚠️ Failed decisions already tried: {failed_attempts} — do NOT repeat these."
+                        if remaining:
+                            prompt += f" Remaining options: {remaining}."
                     prompt += "\n\nRespond with a single JSON action object."
 
                     print(prompt, file=sys.stderr)

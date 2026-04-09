@@ -171,7 +171,32 @@
   <p>Meta PyTorch OpenEnv Hackathon · Round 1 · March 2026 · 4 difficulty tiers</p>
 </header>
 
-<!-- ── Score comparison (full width) ── -->
+<!-- ── Full table ── -->
+<div class="table-wrap">
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table id="resultsTable">
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Provider</th>
+          <th>Agent</th>
+          <th>Easy Score</th>
+          <th>Easy Rwd</th>
+          <th>Medium Score</th>
+          <th>Medium Rwd</th>
+          <th>Hard Score</th>
+          <th>Hard Rwd</th>
+          <th>Very Hard Score</th>
+          <th>Very Hard Rwd</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Score charts ── -->
 <div class="card full">
   <h2>One-Shot Baseline — Grader Score by Difficulty Tier</h2>
   <div class="legend">
@@ -207,31 +232,6 @@
   <div class="card">
     <h2>Total Reward Across All Tasks</h2>
     <div class="chart-wrap"><canvas id="rewardTotalChart"></canvas></div>
-  </div>
-</div>
-
-<!-- ── Full table ── -->
-<div class="table-wrap">
-  <div class="card" style="padding:0;overflow:hidden;">
-    <table id="resultsTable">
-      <thead>
-        <tr>
-          <th>Model</th>
-          <th>Provider</th>
-          <th>Agent</th>
-          <th>Easy Score</th>
-          <th>Easy Rwd</th>
-          <th>Medium Score</th>
-          <th>Medium Rwd</th>
-          <th>Hard Score</th>
-          <th>Hard Rwd</th>
-          <th>Very Hard Score</th>
-          <th>Very Hard Rwd</th>
-          <th>Time</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody"></tbody>
-    </table>
   </div>
 </div>
 
@@ -274,6 +274,10 @@ const RESULTS = [
     easy: { score: 1.00, rwd:  3.47 }, medium: { score: 1.00, rwd:  5.71 }, hard: { score: 0.99, rwd: 11.33 }, very_hard: { score: 0.88, rwd: 10.37 }, time: "5m 14s" },
   { model: "gpt-oss-120b",                  provider: "Cloud (Groq)",          multistep: true,
     easy: { score: 1.00, rwd:  1.68 }, medium: { score: 1.00, rwd:  4.31 }, hard: { score: 0.94, rwd:  7.76 }, very_hard: { score: 0.84, rwd:  5.96 }, time: "9m 47s" },
+  { model: "Gemini 3.1 Flash Lite",         provider: "Cloud (Google)",        multistep: true,
+    easy: { score: 1.00, rwd:  2.49 }, medium: { score: 0.90, rwd: -1.29 }, hard: { score: 0.94, rwd:  1.70 }, very_hard: { score: 0.84, rwd:  8.06 }, time: "12m 29s" },
+  { model: "Qwen 3 32B",                    provider: "Cloud (Groq)",          multistep: true,
+    easy: { score: 1.00, rwd:  3.35 }, medium: { score: 1.00, rwd:  5.58 }, hard: { score: 0.99, rwd: 10.03 }, very_hard: { score: 0.88, rwd: 10.86 }, time: "11m 8s" },
 ];
 
 // Split into one-shot and multi-step sets

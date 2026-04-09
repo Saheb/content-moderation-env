@@ -80,6 +80,8 @@ Models can call `view_post`, `view_thread`, and `lookup_policy` before deciding.
 |---|---|---|---|---|---|---|
 | gemma-4-31b-it | Cloud (Google) | **1.00**† / +3.47 | **1.00**† / +5.71 | **0.99** / +11.33 | **0.88** / +10.37 | 5m 14s |
 | gpt-oss-120b | Cloud (Groq) | **1.00**† / +1.68 | **1.00**† / +4.31 | **0.94** / +7.76 | **0.84** / +5.96 | 9m 47s |
+| Gemini 3.1 Flash Lite | Cloud (Google) | **1.00**† / +2.49 | 0.90 / -1.29 | **0.94** / +1.70 | **0.84** / +8.06 | 12m 29s |
+| Qwen 3 32B | Cloud (Groq) | **1.00**† / +3.35 | **1.00**† / +5.58 | **0.99** / +10.03 | **0.88** / +10.86 | 11m 8s |
 
 > † Raw grader accuracy shown; the validator requires scores strictly within (0, 1), so 1.00 is emitted as **0.99** and 0.00 as **0.01**.
 
