@@ -40,3 +40,7 @@ MANIFEST
 
 # uv
 uv.lock
+
+# llms
+.claude/
+.kilo/

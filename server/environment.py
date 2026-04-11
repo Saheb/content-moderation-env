@@ -61,12 +61,16 @@ class ContentModerationEnvironment(Environment):
 
         active_post = self._get_active_post()
         
+        # Always compute grader score (never None) - required for OpenEnv compatibility
+        initial_grader_score = self._compute_grader_score()
+        
         return ModerationObservation(
             active_post_summary=active_post,
             failed_attempts=self.post_failures.get(active_post["id"], []) if active_post else [],
             last_action_result="Episode started — VibeNet moderation pipeline ready",
             current_post=None,
             thread_context=None,
+            grader_score=initial_grader_score,
             done=False,
             reward=0.0,
             metadata={"task": task_name, "total_posts": len(self.task_data["items"])}
@@ -209,7 +213,8 @@ class ContentModerationEnvironment(Environment):
         # Episode termination
         done = len(self.moderated) == len(self.task_data["items"]) or self.step_count >= self.task_data["max_steps"] or loop_exceeded
 
-        grader = self._compute_grader_score() if done else None
+        # Always compute grader score (never None) - required for OpenEnv compatibility
+        grader = self._compute_grader_score()
 
         active_post = self._get_active_post()
         

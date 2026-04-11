@@ -1,0 +1,9 @@
+# Core dependencies for content-moderation-env
+openenv-core>=0.2.0
+pydantic>=2.0
+fastapi>=0.110
+uvicorn[standard]>=0.25.0
+python-dotenv>=1.0.0
+
+# Optional dependencies for baseline inference
+openai>=1.0

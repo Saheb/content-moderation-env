@@ -26,6 +26,35 @@ A small, deterministic OpenEnv for evaluating AI agents on user-generated conten
 
 ---
 
+## Environment Specification
+
+**OpenEnv Configuration**: Minimal specification in `openenv.yaml` matching reference environments:
+- `spec_version: 1`
+- `name: content_moderation_env` 
+- `type: space`
+- `runtime: fastapi`
+- `app: server.app:app`
+- `port: 8000`
+
+**Technical Details**:
+- **Version**: 0.1.0
+- **Python**: >=3.10
+- **License**: MIT
+- **Authors**: Saheb Motiani ([@saheb](https://github.com/saheb))
+- **Environment Type**: Sequential decision making
+- **Observation Space**: Structured text with Pydantic models
+- **Action Space**: Discrete moderation actions
+- **Max Episode Length**: 150 steps (very_hard)
+- **Deterministic**: Yes - fully reproducible task packs
+- **Reward Shaping**: Yes - dense rewards with policy bonuses
+- **Stateful**: Yes - maintains episode state
+
+**Tags**: content-moderation, reasoning, policy-grounded, multi-step, deterministic
+
+**Keywords**: content moderation, AI safety, policy reasoning, context awareness, reward shaping, thread context, multi-step reasoning
+
+---
+
 ## Why content moderation?
 
 Content moderation is one of the few domains where:
