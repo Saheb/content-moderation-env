@@ -38,6 +38,5 @@ CMD ["uvicorn", "server.app:app", \
      "--host", "0.0.0.0", \
      "--port", "8000", \
      "--workers", "1", \
-     "--timeout", "300", \
      "--timeout-keep-alive", "65", \
      "--log-level", "info"]
