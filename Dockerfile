@@ -11,15 +11,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /code
 
 # Copy requirements first for better caching
-COPY pyproject.toml uv.lock ./
+COPY requirements.txt ./
 
-# Install dependencies with uv for faster builds
-RUN pip install --no-cache-dir uv && \
-    uv sync --frozen && \
-    uv pip install --no-cache-dir -e .
+# Install dependencies with standard pip for reliability
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application
 COPY . .
+
+# Install the project in editable mode
+RUN pip install --no-cache-dir -e .
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash app && \
