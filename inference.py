@@ -102,8 +102,8 @@ def log_start(task: str, env: str, model: str) -> None:
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error={error or 'null'}", flush=True)
 
-def log_end(success: bool, steps: int, rewards: List[float]) -> None:
-    print(f"[END] success={str(success).lower()} steps={steps} rewards={','.join(f'{r:.2f}' for r in rewards)}", flush=True)
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={','.join(f'{r:.2f}' for r in rewards)}", flush=True)
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -382,7 +382,7 @@ def main() -> None:
                 print(f"Task '{task}' failed: {e}", file=sys.stderr)
                 final_summary[task] = {"score": score, "reward": total_reward, "success": False}
             finally:
-                log_end(success=success, steps=step, rewards=rewards)
+                log_end(success=success, steps=step, score=score, rewards=rewards)
 
     finally:
         try:
