@@ -242,6 +242,10 @@
     · One-shot very hard ceiling: <strong>0.44</strong> · Multi-step very hard best: <strong>0.88</strong>
     · Very hard reward range: <strong>−380.23 → +10.37</strong>
   </p>
+  <p style="margin-top: 0.5rem;">
+    † Scores of 1.00 and 0.00 shown above are raw grader accuracy. The validator requires scores strictly within (0,&nbsp;1),
+    so <strong>1.00</strong> is emitted as <strong>0.99</strong> and <strong>0.00</strong> as <strong>0.01</strong>.
+  </p>
 </footer>
 
 <script>
@@ -503,7 +507,8 @@ function rwdFmt(v) {
 }
 function scoreFmt(v) {
   if (v === null) return '<span style="color:var(--muted)">—</span>';
-  return `<span class="${scoreClass(v)}">${v.toFixed(2)}</span>`;
+  const suffix = (v === 1.00 || v === 0.00) ? "†" : "";
+  return `<span class="${scoreClass(v)}">${v.toFixed(2)}${suffix}</span>`;
 }
 
 const tbody = document.getElementById("tableBody");
