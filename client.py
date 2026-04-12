@@ -12,7 +12,10 @@ from openenv.core import EnvClient
 from openenv.core.client_types import StepResult
 from openenv.core.env_server.types import State
 
-from models import ModerationAction, ModerationObservation
+try:
+    from models import ModerationAction, ModerationObservation
+except ImportError:
+    from .models import ModerationAction, ModerationObservation
 
 
 class ContentModerationEnv(EnvClient[ModerationAction, ModerationObservation, State]):

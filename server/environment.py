@@ -3,8 +3,11 @@ import json
 import os
 from typing import Dict, Any, Optional
 
-from openenv.core.env_server import Environment
-from models import ModerationAction, ModerationObservation, ModerationState
+from openenv.core.env_server.interfaces import Environment
+try:
+    from models import ModerationAction, ModerationObservation, ModerationState
+except ImportError:
+    from ..models import ModerationAction, ModerationObservation, ModerationState
 
 
 class ContentModerationEnvironment(Environment):
@@ -61,16 +64,13 @@ class ContentModerationEnvironment(Environment):
 
         active_post = self._get_active_post()
         
-        # Always compute grader score (never None) - required for OpenEnv compatibility
-        initial_grader_score = self._compute_grader_score()
-        
         return ModerationObservation(
             active_post_summary=active_post,
             failed_attempts=self.post_failures.get(active_post["id"], []) if active_post else [],
             last_action_result="Episode started — VibeNet moderation pipeline ready",
             current_post=None,
             thread_context=None,
-            grader_score=initial_grader_score,
+            grader_score=None,
             done=False,
             reward=0.0,
             metadata={"task": task_name, "total_posts": len(self.task_data["items"])}
@@ -213,8 +213,8 @@ class ContentModerationEnvironment(Environment):
         # Episode termination
         done = len(self.moderated) == len(self.task_data["items"]) or self.step_count >= self.task_data["max_steps"] or loop_exceeded
 
-        # Always compute grader score (never None) - required for OpenEnv compatibility
-        grader = self._compute_grader_score()
+        # Only compute grader score when episode is done
+        grader = self._compute_grader_score() if done else None
 
         active_post = self._get_active_post()
         
@@ -260,7 +260,7 @@ class ContentModerationEnvironment(Environment):
             if pid in self.decisions and pid not in self.viewed_threads:
                 score -= penalty
 
-        return round(max(0.01, min(score, 0.99)), 2)  # strictly (0, 1) — validator rejects boundary values
+        return round(max(0.0, min(score, 1.0)), 4)
 
     def _get_active_post(self) -> Optional[Dict[str, str]]:
         """Identifies the next pending post in the sequential queue."""

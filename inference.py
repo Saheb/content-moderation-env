@@ -58,7 +58,7 @@ MODERATION_JSON_SCHEMA = {
         "schema": {
             "type": "object",
             "properties": {
-                "type":      {"type": "string", "enum": ["view_post", "view_thread", "categorize", "lookup_policy", "moderate"]},
+                "type":      {"type": "string", "enum": ["view_post", "view_thread", "categorize", "lookup_policy", "moderate", "escalate"]},
                 "post_id":   {"type": "string"},
                 "policy_id": {"type": "string"},
                 "category":  {"type": "string"},
@@ -79,7 +79,8 @@ Available actions:
   view_post      — load the full text of the active post          {"type":"view_post","post_id":"<id>"}
   view_thread    — load the reply thread for context             {"type":"view_thread","post_id":"<id>"}
   lookup_policy  — look up a specific policy                     {"type":"lookup_policy","policy_id":"<P1-P5>"}
-  moderate       — issue your final decision (use when ready)    {"type":"moderate","post_id":"<id>","decision":"<keep|warn|remove|escalate>","rationale":"<P1-P5>"}
+  moderate       — issue your final decision (use when ready)    {"type":"moderate","post_id":"<id>","decision":"<keep|warn|remove>","rationale":"<P1-P5>"}
+  escalate       — escalate a post for human review             {"type":"escalate","post_id":"<id>"}
 
 Policies:
   P1: Hate speech or targeted harassment → remove
@@ -101,8 +102,8 @@ def log_start(task: str, env: str, model: str) -> None:
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error={error or 'null'}", flush=True)
 
-def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
-    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={','.join(f'{r:.2f}' for r in rewards)}", flush=True)
+def log_end(success: bool, steps: int, rewards: List[float]) -> None:
+    print(f"[END] success={str(success).lower()} steps={steps} rewards={','.join(f'{r:.2f}' for r in rewards)}", flush=True)
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -125,26 +126,80 @@ def _connect_with_retry(client, max_attempts: int = 6) -> None:
             time.sleep(wait)
 
 
+_RETRIABLE_KEYWORDS = (
+    # format issues
+    "response_format", "json_object", "json_schema", "invalid schema",
+    "json_validate_failed", "validate json", "unknown variant", "enum",
+    # tool-call issues
+    "tool_use_failed", "tool_choice", "tool called", "failed_generation",
+    # generic server-side issues
+    "internal error", "unsupported", "not supported",
+)
+
+_FORMAT_LEVELS = [
+    ("json_schema", MODERATION_JSON_SCHEMA),
+    ("json_object", {"type": "json_object"}),
+    ("plain_text",  None),
+]
+
+# Cache the first (format, tool_choice) combo that succeeds so every
+# subsequent call skips straight to it.  Resets naturally on process restart.
+_working_combo: Optional[tuple] = None
+
+
+def _build_kwargs(model: str, messages: list, response_fmt, use_tool_choice: bool) -> dict:
+    kwargs = {"model": model, "messages": messages}
+    if use_tool_choice:
+        kwargs["tool_choice"] = "none"
+    if response_fmt is not None:
+        kwargs["response_format"] = response_fmt
+    return kwargs
+
+
 def _call_llm(client: OpenAI, model: str, messages: list) -> object:
-    """Call the LLM with structured-output fallbacks: json_schema → json_object → plain text."""
-    format_fallbacks = [
-        MODERATION_JSON_SCHEMA,
-        {"type": "json_object"},
-        None,  # plain text
-    ]
-    for fmt in format_fallbacks:
-        try:
-            kwargs = {"model": model, "messages": messages}
-            if fmt:
-                kwargs["response_format"] = fmt
-            return client.chat.completions.create(**kwargs)
-        except (openai.UnprocessableEntityError, openai.BadRequestError, openai.InternalServerError) as e:
-            if fmt is None:
-                raise  # already on plain text, nothing left to try
-            err = str(e).lower()
-            if any(kw in err for kw in ("response_format", "json_object", "json_schema", "unknown variant", "internal error", "unsupported", "not supported", "invalid schema", "enum", "json_validate_failed", "validate json", "failed_generation")):
-                continue  # try next format
-            raise
+    """Call the LLM, gracefully degrading when a provider rejects a feature.
+
+    Fallback order (tried once, then the winning combo is cached):
+      1. json_schema  + tool_choice="none"   (strictest)
+      2. json_schema  (no tool_choice)
+      3. json_object  + tool_choice="none"
+      4. json_object  (no tool_choice)
+      5. plain text   + tool_choice="none"
+      6. plain text   (no tool_choice)        (most permissive)
+
+    Each step is only tried when the previous one raised a recognisable
+    "not supported" style error.  Unrecognised errors are re-raised immediately.
+    """
+    global _working_combo
+
+    # Fast path: reuse the combo that already worked
+    if _working_combo is not None:
+        label, response_fmt, use_tool_choice = _working_combo
+        kwargs = _build_kwargs(model, messages, response_fmt, use_tool_choice)
+        return client.chat.completions.create(**kwargs)
+
+    # Discovery path: try each combo until one succeeds
+    last_exc = None
+    for label, response_fmt in _FORMAT_LEVELS:
+        for use_tool_choice in (True, False):
+            try:
+                kwargs = _build_kwargs(model, messages, response_fmt, use_tool_choice)
+                result = client.chat.completions.create(**kwargs)
+                _working_combo = (label, response_fmt, use_tool_choice)
+                tc_tag = "+tool_choice" if use_tool_choice else ""
+                print(f"LLM format locked: {label}{tc_tag}", file=sys.stderr)
+                return result
+
+            except (openai.UnprocessableEntityError, openai.BadRequestError, openai.InternalServerError) as e:
+                last_exc = e
+                err_lower = str(e).lower()
+                if any(kw in err_lower for kw in _RETRIABLE_KEYWORDS):
+                    tc_tag = "+tool_choice" if use_tool_choice else ""
+                    print(f"LLM fallback: {label}{tc_tag} failed, trying next… ({e!s:.120})", file=sys.stderr)
+                    continue
+                raise
+
+    raise last_exc
 
 
 def _call_llm_with_retry(client: OpenAI, model: str, messages: list) -> object:
@@ -171,6 +226,14 @@ def _call_llm_with_retry(client: OpenAI, model: str, messages: list) -> object:
 
 def _parse_action(raw: str) -> dict:
     """Extract and normalise the first JSON object from a model response."""
+    # Handle tool-call wrapped responses (model emitted a function call instead of plain JSON)
+    try:
+        maybe = json.loads(raw)
+        if isinstance(maybe, dict) and "arguments" in maybe and "name" in maybe:
+            raw = maybe["arguments"] if isinstance(maybe["arguments"], str) else json.dumps(maybe["arguments"])
+    except (json.JSONDecodeError, ValueError):
+        pass
+
     # Find first complete JSON object using brace counting
     start = raw.find("{")
     if start != -1:
@@ -319,7 +382,7 @@ def main() -> None:
                 print(f"Task '{task}' failed: {e}", file=sys.stderr)
                 final_summary[task] = {"score": score, "reward": total_reward, "success": False}
             finally:
-                log_end(success=success, steps=step, score=score, rewards=rewards)
+                log_end(success=success, steps=step, rewards=rewards)
 
     finally:
         try:

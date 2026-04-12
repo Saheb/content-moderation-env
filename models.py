@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Literal, Dict, Any, Optional
 
 # Import core typed bases from the OpenEnv runtime package
-from openenv.core.env_server import Action as BaseAction, Observation as BaseObservation, State
+from openenv.core.env_server.types import Action as BaseAction, Observation as BaseObservation, State
 
 class ModerationAction(BaseAction):
     """Action schema for moderation decisions and context lookups."""

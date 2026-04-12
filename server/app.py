@@ -8,10 +8,13 @@ import uvicorn
 from fastapi import HTTPException
 from fastapi.responses import HTMLResponse
 
-from openenv.core.env_server import create_fastapi_app
+from openenv.core.env_server.http_server import create_app
 from env_loader import load_environment
 from .environment import ContentModerationEnvironment
-from models import ModerationAction, ModerationObservation
+try:
+    from models import ModerationAction, ModerationObservation
+except ImportError:
+    from ..models import ModerationAction, ModerationObservation
 
 # Configure logging
 logging.basicConfig(
@@ -35,15 +38,16 @@ _demo_sessions: dict = {}
 _MAX_DEMO_SESSIONS = 50
 
 
-def create_app():
+def _create_app():
     """Factory function for creating the FastAPI app instance."""
     logger.info("Creating FastAPI app...")
     
     try:
-        app = create_fastapi_app(
-            lambda: ContentModerationEnvironment(),
-            action_cls=ModerationAction,
-            observation_cls=ModerationObservation,
+        app = create_app(
+            ContentModerationEnvironment,
+            ModerationAction,
+            ModerationObservation,
+            env_name="content_moderation",
         )
         logger.info("OpenEnv app created successfully")
     except Exception as e:
@@ -63,6 +67,16 @@ def create_app():
         except Exception as e:
             logger.error("Error serving demo: %s", e)
             return HTMLResponse(content="<h1>Content Moderation Environment</h1><p>Error loading demo</p>", status_code=500)
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    def favicon():
+        """Serve an inline SVG favicon."""
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+            '<text y=".9em" font-size="90">🛡️</text>'
+            '</svg>'
+        )
+        return HTMLResponse(content=svg, media_type="image/svg+xml")
 
     @app.get("/health", tags=["Health"])
     def health():
@@ -95,7 +109,7 @@ def create_app():
 
 def main():
     """Create and run the FastAPI app for local/dev execution."""
-    app = create_app()
+    app = _create_app()
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
 
 
@@ -109,7 +123,7 @@ _app = None
 def get_app():
     global _app
     if _app is None:
-        _app = create_app()
+        _app = _create_app()
     return _app
 
 # For direct imports
