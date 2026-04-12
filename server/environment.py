@@ -63,6 +63,7 @@ class ContentModerationEnvironment(Environment):
             self.task_data = json.load(f)
 
         active_post = self._get_active_post()
+        initial_grader_score = self._compute_grader_score()
         
         return ModerationObservation(
             active_post_summary=active_post,
@@ -70,7 +71,7 @@ class ContentModerationEnvironment(Environment):
             last_action_result="Episode started — VibeNet moderation pipeline ready",
             current_post=None,
             thread_context=None,
-            grader_score=None,
+            grader_score=initial_grader_score,
             done=False,
             reward=0.0,
             metadata={"task": task_name, "total_posts": len(self.task_data["items"])}
@@ -213,8 +214,7 @@ class ContentModerationEnvironment(Environment):
         # Episode termination
         done = len(self.moderated) == len(self.task_data["items"]) or self.step_count >= self.task_data["max_steps"] or loop_exceeded
 
-        # Only compute grader score when episode is done
-        grader = self._compute_grader_score() if done else None
+        grader = self._compute_grader_score()
 
         active_post = self._get_active_post()
         
